@@ -743,45 +743,46 @@
    #f5f5f5 card background · rgba(0,0,0,0.055) glass hairline
 ═══════════════════════════════════════════════════════════════ */
 /* ═══════════════════════════════════════════════════════════════
-   ONE VISUAL WORLD — midnight ground, chocolate card.
+   ONE VISUAL WORLD — midnight, with amber.
 
-   This deck commits to a single palette rather than tracking the
-   viewer's theme: the ground is the editor's own Midnight preset
-   (#0f1116), and the cards are a dark chocolate lifted off it. Flat
-   colour throughout — no gradient, no texture, nothing behind the
-   cards but the ground itself.
+   Flat colour throughout: nothing sits behind the cards but the
+   ground. The ground is a deep midnight void; the cards are the
+   editor's own Midnight preset (#0f1116) lifted a step above it, so
+   they read as surfaces without ever stopping being dark.
 
-   Amber carries every accent. It is the editor's GC gold, and against
-   a warm brown it is the one place the palette raises its voice; a
-   clay rose separates warnings from it without going cold.
+   The accent is amber, which is not a decorative choice — a trading
+   terminal has been amber on black since the 1980s, and it is also
+   the editor's own GC gold. It is the single warm note against a
+   cool dark, and everything else stays quiet. A coral carries
+   warnings so they never read as the accent.
 ═══════════════════════════════════════════════════════════════ */
 :root{
-  --ground:#0f1116;              /* the editor's Midnight, flat */
-  --ground-2:#0f1116;
+  --ground:#07090e;              /* deep midnight, flat */
+  --ground-2:#07090e;
 
-  --glass:#2a1e16;               /* dark chocolate card */
-  --glass-2:rgba(255,236,214,.055);
-  --hair:rgba(255,236,214,.145);
-  --hair-2:rgba(255,236,214,.085);
-  --edge:rgba(255,232,205,.07);  /* light catching the card's top edge */
+  --glass:#161b24;               /* the card: dark, lifted a step */
+  --glass-2:rgba(198,216,242,.055);
+  --hair:rgba(198,216,242,.145);
+  --hair-2:rgba(198,216,242,.085);
+  --edge:rgba(210,228,255,.07);  /* light along the card's top edge */
 
-  --ink:#f4ece2;                 /* warm cream */
-  --ink-2:#cbbaa8;
-  --ink-3:#a08f7a;
+  --ink:#e9edf4;
+  --ink-2:#aeb8c6;
+  --ink-3:#828e9f;
 
-  --tab-bg:#f0e7da;
-  --tab-fg:#241a16;
+  --tab-bg:#e9edf4;
+  --tab-fg:#161b24;
 
-  --signal:#e6a83f;              /* amber, the single accent */
+  --signal:#e8ab42;              /* amber — the one warm note */
   --signal-fill:#f2b705;
-  --wash:rgba(230,168,63,.10);
+  --wash:rgba(232,171,66,.10);
 
-  --gold:#dd8f6a;                /* clay rose, for warnings only */
-  --gold-fill:#d98a63;
-  --warm-wash:rgba(217,138,99,.11);
+  --gold:#ef7f68;                /* coral, warnings only */
+  --gold-fill:#ef7f68;
+  --warm-wash:rgba(239,127,104,.10);
 
-  --shade:0 6px 22px rgba(0,0,0,.5), 0 28px 72px rgba(0,0,0,.45);
-  --shade-sm:0 2px 12px rgba(0,0,0,.45);
+  --shade:0 6px 22px rgba(0,0,0,.55), 0 28px 72px rgba(0,0,0,.5);
+  --shade-sm:0 2px 12px rgba(0,0,0,.5);
 
   --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
@@ -1785,7 +1786,7 @@ function paintTrim(){
   c.setTransform(1,0,0,1,0,0);
   c.clearRect(0,0,W,H);
   var d=dark();
-  var lab=d?"rgba(241,238,229,0.72)":"rgba(27,26,22,0.66)";
+  var lab=d?"rgba(233,237,244,0.7)":"rgba(27,26,22,0.66)";
 
   function panel(x,readW,title){
     c.save();
@@ -1824,11 +1825,11 @@ function paintMarks(){
   c.fillStyle=d?"rgba(255,255,255,0.03)":"#f5f5f5";
   c.fillRect(0,0,W,H);
 
-  var ink=d?"#f1eee5":"#1c1c1c";
+  var ink=d?"#e9edf4":"#1c1c1c";
   drawXMark(c,238,142,132,ink);
   drawInstaMark(c,642,142,132,ink);
 
-  c.fillStyle=d?"rgba(241,238,229,0.65)":"rgba(27,26,22,0.6)";
+  c.fillStyle=d?"rgba(233,237,244,0.62)":"rgba(27,26,22,0.6)";
   c.font="600 12px "+MONO; c.textAlign="center"; c.textBaseline="alphabetic";
   c.fillText("X — FILLED",238,272);
   c.fillText("INSTAGRAM — OUTLINED",642,272);
@@ -1866,7 +1867,7 @@ function paintTabs(){
     else{
       var left=cx2-t.tw/2, f=fadeVal/100;
       var a0=(1-f).toFixed(3), a1=(1-0.45*f).toFixed(3);
-      var base=d?"235,232,223":"189,189,189";
+      var base=d?"225,232,242":"189,189,189";
       var gr=c.createLinearGradient(left,0,left+t.tw,0);
       if(i===0){
         gr.addColorStop(0,"rgba("+base+","+a0+")");
