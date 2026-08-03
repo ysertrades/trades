@@ -84,6 +84,12 @@ canvas{display:block;width:100%;height:auto;touch-action:none}
 .track{position:absolute;left:0;right:0;height:6px;border-radius:3px;background:#e6e6e6}
 .fill{position:absolute;left:0;height:6px;border-radius:3px;background:#171717}
 .thumb{position:absolute;width:20px;height:20px;border-radius:50%;background:#fff;border:1px solid #cfcfcf;box-shadow:0 1px 3px rgba(0,0,0,.18)}
+/* A 20px handle is a mouse target. On touch the whole control grows. */
+@media (pointer:coarse){
+  .slider{height:44px}
+  .track,.fill{height:7px;border-radius:4px}
+  .thumb{width:26px;height:26px}
+}
 body.embedded .wrap{padding:10px}
 body.embedded .sub{display:none}
 body.embedded h1{font-size:15px}
@@ -775,7 +781,9 @@ function makeSlider(el,opts){
   function paint(){
     const pct=Math.max(0,Math.min(100,((opts.get()-opts.min)/(opts.max-opts.min))*100));
     fill.style.width=pct+"%";
-    thumb.style.left="calc("+pct+"% - 10px)";
+    /* derived from the thumb's real width, so it stays centred when touch
+       sizing makes it bigger */
+    thumb.style.left="calc("+pct+"% - "+((thumb.offsetWidth||20)/2)+"px)";
   }
   function commit(clientX){
     if(el.dataset.off==="1") return;
@@ -788,7 +796,11 @@ function makeSlider(el,opts){
   }
   el.addEventListener("pointerdown",function(e){
     if(el.dataset.off==="1") return;
-    active=true; el.setPointerCapture(e.pointerId); commit(e.clientX);
+    active=true;
+    /* Capture is a nicety — if it is refused the drag must still work, so it
+       must not come before the commit. */
+    try{ el.setPointerCapture(e.pointerId); }catch(err){}
+    commit(e.clientX);
   });
   el.addEventListener("pointermove",function(e){ if(active) commit(e.clientX); });
   el.addEventListener("pointerup",function(e){
