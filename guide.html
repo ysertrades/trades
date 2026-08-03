@@ -1245,7 +1245,16 @@ input[type="range"]::-moz-range-thumb{
   font-variant-numeric:tabular-nums; padding:0 8px 0 5px; flex:none;
 }
 .count b{color:var(--ink); font-weight:600;}
-@media (max-width:520px){ .dots{display:none;} }
+/* Below this width the dots are dropped, which leaves the two arrows as the
+   only thing there is to tap — so they get a proper finger-sized target
+   rather than the 30px that suited a pointer. */
+@media (max-width:520px){
+  .dots{display:none;}
+  .nav{padding:5px 6px; gap:2px;}
+  .navbtn{width:44px; height:44px;}
+  .navbtn svg{width:18px; height:18px;}
+  .count{font-size:12px; padding:0 10px 0 6px;}
+}
 
 /* ═══════════════════ PHONE DENSITY ═══════════════════
    Same content, tighter rhythm: a slide that took three screens on a phone
