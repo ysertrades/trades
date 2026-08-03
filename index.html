@@ -63,6 +63,22 @@ canvas{display:block;width:100%;height:auto;touch-action:none}
 .note{margin:8px 0 0;font-size:11px;line-height:1.5;color:#a8a8a8}
 .check{display:flex;align-items:center;gap:8px;margin-top:11px;font-size:12.5px;color:#3d3d3d;cursor:pointer;user-select:none}
 .check input{width:16px;height:16px;accent-color:#171717}
+/* Swatches share the chip's 34px height so the background row lines up with
+   every other control row in the panel. */
+.sw{width:34px;height:34px;padding:0;border-radius:9px;border:1px solid #dcdcdc;cursor:pointer;
+  position:relative;flex:none;background-clip:padding-box}
+.sw[data-on="1"]{border-color:#171717;box-shadow:0 0 0 2px #fff inset,0 0 0 1px #171717}
+/* A spectrum ring around the live colour, so the custom picker never reads as
+   an empty square the way a plain swatch does at pale values. */
+.pick{width:34px;height:34px;border-radius:9px;overflow:hidden;border:0;padding:2.5px;
+  display:inline-flex;flex:none;cursor:pointer;
+  background:conic-gradient(from .25turn,#f2b705,#e03131,#8b5cf6,#1f9bf0,#26a69a,#f2b705)}
+.pick input[type=color]{width:100%;height:100%;padding:0;border:0;background:none;cursor:pointer;border-radius:6.5px}
+.pick input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+.pick input[type=color]::-webkit-color-swatch{border:none;border-radius:6.5px}
+.pick input[type=color]::-moz-color-swatch{border:none;border-radius:6.5px}
+.hexf{width:96px;flex:none;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;text-transform:uppercase}
+.hexf.bad{border-color:#e8a3a3;background:#fff8f8}
 .slider{position:relative;height:34px;display:flex;align-items:center;touch-action:none;cursor:pointer;user-select:none;width:100%}
 .slider[data-off="1"]{opacity:.4;cursor:default}
 .track{position:absolute;left:0;right:0;height:6px;border-radius:3px;background:#e6e6e6}
@@ -210,6 +226,19 @@ body.embedded .head{margin-bottom:10px}
       </section>
 
       <section class="sec">
+        <div class="sech"><h3 class="lab">Background</h3><span class="hint" id="bgHint">#F5F5F5</span></div>
+        <div class="row" id="bgRow"></div>
+        <div class="row" style="margin-top:8px">
+          <label class="pick" id="pickWrap">
+            <input type="color" id="bgPicker" value="#f5f5f5" aria-label="Custom background colour">
+          </label>
+          <input class="field hexf" id="bgHex" maxlength="7" spellcheck="false" autocomplete="off" aria-label="Background hex">
+          <button type="button" class="mini" id="bgReset">Reset</button>
+        </div>
+        <p class="note">Overlays re-derive from whatever you pick — the glass keeps the same relationship to the background, and the labels flip to stay readable on dark colours.</p>
+      </section>
+
+      <section class="sec">
         <div class="sech"><h3 class="lab">Overlay size</h3><span class="hint" id="uiHint">100%</span></div>
         <div class="slider" id="uiSlider"><div class="track"></div><div class="fill"></div><div class="thumb"></div></div>
         <div class="sech" style="margin-top:12px"><h3 class="lab">Overlay tone</h3><span class="hint" id="tintHint">50%</span></div>
@@ -263,7 +292,7 @@ body.embedded .head{margin-bottom:10px}
    The on-screen canvas IS the export canvas (1920x1080). Downloading
    reads that exact canvas, so the file can never differ from the view.
 ================================================================== */
-const W = 1920, H = 1080, BG = "#f5f5f5";
+const W = 1920, H = 1080, BG_DEFAULT = "#f5f5f5";
 const POPPINS = 'Poppins, "Helvetica Neue", system-ui, sans-serif';
 const INTER   = 'Inter, "Helvetica Neue", system-ui, sans-serif';
 
@@ -282,6 +311,69 @@ const LOGOS = [
   { id:"x", label:"X" },
   { id:"instagram", label:"Instagram" }
 ];
+const BACKDROPS = [
+  { hex:"#f5f5f5", name:"Default" },
+  { hex:"#ffffff", name:"Paper white" },
+  { hex:"#efe9df", name:"Warm linen" },
+  { hex:"#e8eef4", name:"Cool mist" },
+  { hex:"#20201c", name:"Charcoal" },
+  { hex:"#0f1116", name:"Midnight" }
+];
+
+/* ------------------------- colour derivation -------------------------------
+   Everything the overlay draws is derived from the background rather than
+   hardcoded, so a new background carries the whole design with it instead of
+   leaving black text on a black card. The numbers below are chosen so that
+   #f5f5f5 reproduces the original palette exactly — ink lands on #1c1c1c and
+   the tone span on 10 up / 32 down — and every other colour follows the same
+   relationships.
+--------------------------------------------------------------------------*/
+function hexRgb(h){
+  h=String(h).trim().replace(/^#/,"");
+  if(h.length===3) h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  const n=parseInt(h,16);
+  if(h.length!==6||isNaN(n)) return null;
+  return [(n>>16)&255,(n>>8)&255,n&255];
+}
+function rgbHex(c){
+  return "#"+c.map(function(v){
+    return Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,"0");
+  }).join("");
+}
+function mixTo(rgb,target,t){
+  return rgb.map(function(v,i){ return v+(target[i]-v)*t; });
+}
+function srgbLin(c){ c/=255; return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4); }
+function relLum(c){ return 0.2126*srgbLin(c[0])+0.7152*srgbLin(c[1])+0.0722*srgbLin(c[2]); }
+function css(c,a){
+  const r=Math.round(c[0]),g=Math.round(c[1]),b=Math.round(c[2]);
+  return a===undefined ? "rgb("+r+","+g+","+b+")" : "rgba("+r+","+g+","+b+","+a+")";
+}
+
+const BLACK=[0,0,0], WHITE=[255,255,255];
+
+/* Rebuilt whenever the background changes, then read by draw(). */
+function buildPalette(hex){
+  const bg=hexRgb(hex)||hexRgb(BG_DEFAULT);
+  const onDark=relLum(bg)<0.42;
+
+  /* Text keeps a trace of the background's hue rather than going pure black or
+     pure white, which is what stops it reading as a sticker on the card. */
+  const ink       = onDark ? mixTo(bg,WHITE,0.92)  : mixTo(bg,BLACK,0.885);
+  const inkStrong = onDark ? mixTo(bg,WHITE,0.96)  : mixTo(bg,BLACK,0.918);
+  const idle      = mixTo(bg,ink,0.258);   // inactive session labels
+
+  return {
+    bg:bg, hex:rgbHex(bg), onDark:onDark,
+    ink:css(ink), inkStrong:css(inkStrong), idleRgb:idle.map(Math.round).join(","),
+    tabBg: onDark ? css(mixTo(bg,WHITE,0.90)) : "#46443f",
+    tabFg: onDark ? css(mixTo(bg,BLACK,0.80)) : "#ffffff",
+    tabShadow: onDark ? "rgba(0,0,0,0.45)" : "rgba(0,0,0,0.14)",
+    stroke: onDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.055)",
+    strokeSoft: onDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.05)",
+    shadow: onDark ? "rgba(0,0,0,0.38)" : "rgba(0,0,0,0.055)"
+  };
+}
 
 /* ---------------------------- canvas helpers ---------------------------- */
 function rr(ctx,x,y,w,h,r){
@@ -297,7 +389,7 @@ function glass(ctx,x,y,w,h,r,o){
   const fill=o.fill||"rgba(252,252,252,0.62)", stroke=o.stroke||"rgba(0,0,0,0.055)",
         shadow=o.shadow!==false;
   ctx.save();
-  if(shadow){ctx.shadowColor="rgba(0,0,0,0.055)";ctx.shadowBlur=20;ctx.shadowOffsetY=5;}
+  if(shadow){ctx.shadowColor=o.shadowColor||"rgba(0,0,0,0.055)";ctx.shadowBlur=20;ctx.shadowOffsetY=5;}
   rr(ctx,x,y,w,h,r); ctx.fillStyle=fill; ctx.fill(); ctx.restore();
   ctx.save(); rr(ctx,x,y,w,h,r); ctx.lineWidth=1.4; ctx.strokeStyle=stroke; ctx.stroke(); ctx.restore();
 }
@@ -480,8 +572,10 @@ const S = {
   zoom:1, offX:0, offY:0,
   crop:{l:0,r:0,t:0,b:0},
   ui:1, tint:50, fade:100, showMark:true, fitMode:"fit",
-  markLogo:"x", handle:"YSERTRADES"
+  markLogo:"x", handle:"YSERTRADES",
+  bg:BG_DEFAULT, pal:null
 };
+S.pal=buildPalette(S.bg);
 
 const cv = document.getElementById("cv");
 const ctx = cv.getContext("2d");
@@ -491,13 +585,25 @@ const $ = (id)=>document.getElementById(id);
    lifts them toward white, negative sinks them below the background so the
    panel reads as a soft grey block. The per-element weights keep their
    relationship so rail, capsule and pill never drift out of balance. */
+/* Tone moves the panels away from the background, in whichever direction the
+   slider points. The old span of 10 up / 32 down was not arbitrary: 10 is
+   exactly the headroom #f5f5f5 has before it clips at white. Reading that
+   headroom off the actual background generalises the control to any colour and
+   still lands on 10 and 32 at the default, so the feel is unchanged. */
 function glassFill(weight){
   const t=S.tint;
   const k=Math.abs(t)/100;
-  const span=t<0?32:10;                       // more room downward, it needs it
-  const c=Math.round(245+(t<0?-1:1)*span*k);
+  const bg=S.pal.bg;
+  let up=t>=0;
+  const room=function(u){ return u ? 255-Math.max(bg[0],bg[1],bg[2]) : Math.min(bg[0],bg[1],bg[2]); };
+  let head=room(up);
+  /* Against pure white there is nothing above the background to lift toward,
+     and against pure black nothing below. Rather than let the panels collapse
+     into the card and vanish, take the separation from the other side. */
+  if(head<6 && room(!up)>head){ up=!up; head=room(up); }
+  const d=(up?1:-1)*Math.min(32,head)*k;
   const a=Math.min(0.95,(0.30+0.55*k)*weight);
-  return "rgba("+c+","+c+","+c+","+a.toFixed(3)+")";
+  return css([bg[0]+d,bg[1]+d,bg[2]+d],a.toFixed(3));
 }
 
 function geometry(){
@@ -511,9 +617,10 @@ function geometry(){
 }
 
 function drawTo(g2,k,useFull){
+  const P=S.pal;
   g2.setTransform(k,0,0,k,0,0);
   g2.clearRect(0,0,W,H);
-  g2.fillStyle=BG; g2.fillRect(0,0,W,H);
+  g2.fillStyle=P.hex; g2.fillRect(0,0,W,H);
 
   const g=geometry();
   if(g && S.img){
@@ -544,12 +651,12 @@ function drawTo(g2,k,useFull){
     const active=(i===1), cx2=t.x+t.w/2;
     if(active){
       g2.save();
-      g2.shadowColor="rgba(0,0,0,0.14)"; g2.shadowBlur=16; g2.shadowOffsetY=4;
-      rr(g2,t.x,tabY,t.w,tabH,tabH/2); g2.fillStyle="#46443f"; g2.fill();
+      g2.shadowColor=P.tabShadow; g2.shadowBlur=16; g2.shadowOffsetY=4;
+      rr(g2,t.x,tabY,t.w,tabH,tabH/2); g2.fillStyle=P.tabBg; g2.fill();
       g2.restore();
     }
     g2.font=tabFont; g2.textAlign="center"; g2.textBaseline="middle";
-    if(active){ g2.fillStyle="#ffffff"; }
+    if(active){ g2.fillStyle=P.tabFg; }
     else{
       const left=cx2-t.tw/2;
       /* fade 0 = flat grey, 100 = fully dissolved at the outer end */
@@ -557,13 +664,13 @@ function drawTo(g2,k,useFull){
       const a0=(1-f).toFixed(3), a1=(1-0.45*f).toFixed(3);
       const gr=g2.createLinearGradient(left,0,left+t.tw,0);
       if(i===0){
-        gr.addColorStop(0,"rgba(189,189,189,"+a0+")");
-        gr.addColorStop(0.45,"rgba(189,189,189,"+a1+")");
-        gr.addColorStop(1,"rgba(189,189,189,1)");
+        gr.addColorStop(0,"rgba("+P.idleRgb+","+a0+")");
+        gr.addColorStop(0.45,"rgba("+P.idleRgb+","+a1+")");
+        gr.addColorStop(1,"rgba("+P.idleRgb+",1)");
       }else{
-        gr.addColorStop(0,"rgba(189,189,189,1)");
-        gr.addColorStop(0.55,"rgba(189,189,189,"+a1+")");
-        gr.addColorStop(1,"rgba(189,189,189,"+a0+")");
+        gr.addColorStop(0,"rgba("+P.idleRgb+",1)");
+        gr.addColorStop(0.55,"rgba("+P.idleRgb+","+a1+")");
+        gr.addColorStop(1,"rgba("+P.idleRgb+","+a0+")");
       }
       g2.fillStyle=gr;
     }
@@ -574,7 +681,7 @@ function drawTo(g2,k,useFull){
   const iconR=32*u, railPad=15*u;
   const barH=iconR*2+railPad*2;
   const barY=H-16-barH, barX=16;
-  glass(g2,barX,barY,W-32,barH,barH/2,{fill:glassFill(1),stroke:"rgba(0,0,0,0.05)"});
+  glass(g2,barX,barY,W-32,barH,barH/2,{fill:glassFill(1),stroke:P.strokeSoft,shadowColor:P.shadow});
 
   /* symbol badge + capsule */
   const cy=barY+barH/2;
@@ -585,8 +692,8 @@ function drawTo(g2,k,useFull){
   const tw=g2.measureText(sym.label).width;
   const capH=58*u, capX=iconCX+iconR*0.42, textX=iconCX+iconR+26*u;
   glass(g2,capX,cy-capH/2,textX-capX+tw+30*u,capH,capH/2,
-        {fill:glassFill(1.25),stroke:"rgba(0,0,0,0.055)",shadow:false});
-  g2.font=symFont; g2.fillStyle="#1c1c1c";
+        {fill:glassFill(1.25),stroke:P.stroke,shadow:false});
+  g2.font=symFont; g2.fillStyle=P.ink;
   g2.textAlign="left"; g2.textBaseline="middle";
   g2.fillText(sym.label,textX,cy+1*u);
   drawSymbolIcon(g2,sym.id,iconCX,cy,iconR);
@@ -600,9 +707,9 @@ function drawTo(g2,k,useFull){
     g2.font="400 "+Math.round(26*u)+"px "+POPPINS;
     const mtw=markText?g2.measureText(markText).width:0, mgap=markText?14*u:0;
     const gx=W/2-(markSize+mgap+mtw)/2;
-    drawMark(g2,S.markLogo,gx+markSize/2,cy,markSize,"#1c1c1c");
+    drawMark(g2,S.markLogo,gx+markSize/2,cy,markSize,P.ink);
     if(markText){
-      g2.fillStyle="#1c1c1c"; g2.textAlign="left"; g2.textBaseline="middle";
+      g2.fillStyle=P.ink; g2.textAlign="left"; g2.textBaseline="middle";
       g2.fillText(markText,gx+markSize+mgap,cy+1*u);
     }
     if("letterSpacing" in g2) g2.letterSpacing="0px";
@@ -614,8 +721,8 @@ function drawTo(g2,k,useFull){
   g2.font=tfFont;
   const tfw=g2.measureText(S.timeframe).width;
   const tfH=62*u, tfW=Math.max(104*u,tfw+56*u), tfY=barY-20*u-tfH;
-  glass(g2,(W-tfW)/2,tfY,tfW,tfH,22*u,{fill:glassFill(1.05),stroke:"rgba(0,0,0,0.05)"});
-  g2.font=tfFont; g2.fillStyle="#141414";
+  glass(g2,(W-tfW)/2,tfY,tfW,tfH,22*u,{fill:glassFill(1.05),stroke:P.strokeSoft,shadowColor:P.shadow});
+  g2.font=tfFont; g2.fillStyle=P.inkStrong;
   g2.textAlign="center"; g2.textBaseline="middle";
   g2.fillText(S.timeframe,W/2,tfY+tfH/2+1*u);
   g2.setTransform(1,0,0,1,0,0);
@@ -710,6 +817,32 @@ function buildExport(){
   });
 }
 
+/* ------------------------------ background ------------------------------ */
+function applyBg(hex,fromHexField){
+  const rgb=hexRgb(hex);
+  if(!rgb) return false;
+  S.bg=rgbHex(rgb);
+  S.pal=buildPalette(S.bg);
+  $("bgPicker").value=S.bg;
+  if(!fromHexField) $("bgHex").value=S.bg.toUpperCase();
+  buildBackdrops();
+  refreshHints();
+  draw();
+  return true;
+}
+function buildBackdrops(){
+  const row=$("bgRow"); row.innerHTML="";
+  BACKDROPS.forEach(function(o){
+    const b=document.createElement("button");
+    b.type="button"; b.className="sw"; b.style.background=o.hex;
+    b.title=o.name+" · "+o.hex.toUpperCase();
+    b.setAttribute("aria-label",o.name);
+    b.dataset.on=(S.bg.toLowerCase()===o.hex.toLowerCase())?"1":"0";
+    b.onclick=function(){ applyBg(o.hex); };
+    row.appendChild(b);
+  });
+}
+
 function buildEdges(){
   const box=$("edges"); box.innerHTML="";
   [["Left","l"],["Right","r"],["Top","t"],["Bottom","b"]].forEach(function(pair){
@@ -757,6 +890,7 @@ function refreshHints(){
   $("fadeHint").textContent=Math.round(S.fade)+"%";
   $("sizeHint").textContent=S.fullW?(S.fullW+" × "+S.fullH):"—";
   $("expHint").textContent=(W*S.exportMul)+" × "+(H*S.exportMul);
+  $("bgHint").textContent=S.bg.toUpperCase();
   $("fitBtn").dataset.on=S.fitMode==="fit"?"1":"0";
   $("fillBtn").dataset.on=S.fitMode==="fill"?"1":"0";
   zoomSlider.paint();
@@ -1153,6 +1287,17 @@ $("handleInput").oninput=function(){
   S.handle=$("handleInput").value.slice(0,20);
   draw();
 };
+$("bgPicker").oninput=function(){ applyBg($("bgPicker").value); };
+$("bgHex").oninput=function(){
+  const el=$("bgHex"), v=el.value.trim();
+  const ok=applyBg(v.charAt(0)==="#"?v:"#"+v,true);
+  el.classList.toggle("bad",!ok && v!=="" && v!=="#");
+};
+$("bgHex").onblur=function(){
+  $("bgHex").classList.remove("bad");
+  $("bgHex").value=S.bg.toUpperCase();
+};
+$("bgReset").onclick=function(){ applyBg(BG_DEFAULT); };
 
 const zoomSlider=makeSlider($("zoomSlider"),{
   min:20,max:400,step:0.1,
@@ -1188,6 +1333,8 @@ if(EMBEDDED){
 buildChips();
 buildExport();
 buildEdges();
+buildBackdrops();
+$("bgHex").value=S.bg.toUpperCase();
 $("tfInput").value=S.timeframe;
 $("handleInput").value=S.handle;
 refreshHints();

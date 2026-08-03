@@ -302,12 +302,69 @@
     </div>
   </section>
 
-  <!-- ══════════════════════════ 04 TUNE ══════════════════════════ -->
-  <section class="slide" data-title="Tune">
+  <!-- ══════════════════════════ 04 GROUND ══════════════════════════ -->
+  <section class="slide" data-title="Ground">
     <div class="inner">
       <article class="panel">
         <header class="head">
           <div class="eyebrow"><span class="num">04</span><span class="kicker">Workflow</span><span class="rule"></span></div>
+          <h2>Choose the ground</h2>
+          <p class="sub">Change the background and the whole card follows it.</p>
+        </header>
+
+        <p class="wide-p">Six presets, a colour picker and a hex field. The default
+          <span class="k">#F5F5F5</span> is untouched — but pick anything else and every
+          part of the overlay re-derives itself rather than leaving dark type stranded on
+          a dark card.</p>
+
+        <div class="grounds" id="grounds"></div>
+
+        <div class="two">
+          <div class="col">
+            <div class="spec tight">
+              <div class="row">
+                <span class="lab">Glass</span>
+                <p>Drawn <em>from</em> the background, so it keeps the same relationship to
+                  it at every colour.</p>
+              </div>
+              <div class="row">
+                <span class="lab">Type</span>
+                <p>Keeps a trace of the background's hue instead of snapping to pure black
+                  or white, and flips to light once the ground is dark. Every preset clears
+                  14:1 contrast.</p>
+              </div>
+              <div class="row">
+                <span class="lab">Session pill &amp; edges</span>
+                <p>The pill inverts to light-on-dark grounds; hairlines and shadows swap
+                  with it, which is what keeps a panel legible once the card goes black.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="col">
+            <p>Tone has always moved the panels 10 toward white and up to 32 toward grey.
+              That asymmetry was never arbitrary — 10 is exactly the headroom
+              <span class="k">#F5F5F5</span> has before it clips at white. So the range is
+              now read off whatever ground you pick, and the default still lands on 10 and
+              32.</p>
+            <div class="note">
+              <span class="note-lab">Good to know</span>
+              <p>Pure white is the one ground with no room above it. Rather than let the
+                panels dissolve into the card, the separation is taken from the other side
+                — the glass stays visible at every colour.</p>
+            </div>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════ 05 TUNE ══════════════════════════ -->
+  <section class="slide" data-title="Tune">
+    <div class="inner">
+      <article class="panel">
+        <header class="head">
+          <div class="eyebrow"><span class="num">05</span><span class="kicker">Workflow</span><span class="rule"></span></div>
           <h2>Tune the overlay</h2>
           <p class="sub">Two sliders decide whether the furniture sits on the chart or in it.</p>
         </header>
@@ -357,7 +414,7 @@
     <div class="inner">
       <article class="panel">
         <header class="head">
-          <div class="eyebrow"><span class="num">05</span><span class="kicker">Workflow</span><span class="rule"></span></div>
+          <div class="eyebrow"><span class="num">06</span><span class="kicker">Workflow</span><span class="rule"></span></div>
           <h2>Sign the card</h2>
           <p class="sub">Your logo, your handle — or neither.</p>
         </header>
@@ -415,7 +472,7 @@
     <div class="inner">
       <article class="panel">
         <header class="head">
-          <div class="eyebrow"><span class="num">06</span><span class="kicker">Workflow</span><span class="rule"></span></div>
+          <div class="eyebrow"><span class="num">07</span><span class="kicker">Workflow</span><span class="rule"></span></div>
           <h2>Export</h2>
           <p class="sub">Lossless PNG. Four sizes. Three ways to get the file out.</p>
         </header>
@@ -499,6 +556,12 @@
               <span class="k">H4</span> <span class="k">H6</span> <span class="k">D1</span>
               <span class="k">W1</span>, or a custom label up to 6 characters, forced
               uppercase. Default <span class="k">H4</span>.</p>
+          </div>
+          <div class="row">
+            <span class="lab">Background</span>
+            <p>Six presets, a colour picker, or a typed hex. Every overlay colour derives
+              from it. Default <span class="k">#F5F5F5</span>;
+              <span class="k">Reset</span> returns to it.</p>
           </div>
           <div class="row">
             <span class="lab">Overlay size</span>
@@ -780,9 +843,11 @@ git push -u origin main</code></pre>
               <code>drawInstaMark()</code> do, and it scales with everything else.</p>
           </div>
           <div class="row">
-            <span class="lab">Change the background</span>
-            <p>The <code>BG</code> constant. Remember that overlay tone is calibrated
-              around it, so a very different background wants a different default tone.</p>
+            <span class="lab">Change the preset grounds</span>
+            <p>The background is a panel control now — no source edit to change it. To
+              change which swatches are offered, edit <code>BACKDROPS</code>. Everything
+              downstream comes from <code>buildPalette()</code>, so a new colour needs no
+              other change.</p>
           </div>
           <div class="row">
             <span class="lab">Change the export size</span>
@@ -1247,6 +1312,17 @@ input[type="range"]::-moz-range-thumb{
   background:var(--tab-bg); box-shadow:var(--shade-sm);
 }
 
+.grounds{display:grid; grid-template-columns:repeat(2,1fr); gap:12px;}
+@media (min-width:820px){.grounds{grid-template-columns:repeat(4,1fr);}}
+.ground{display:flex; flex-direction:column; gap:7px; min-width:0;}
+.ground canvas{
+  display:block; width:100%; height:auto; border-radius:10px;
+  border:1px solid var(--hair-2);
+}
+.ground-h{display:flex; align-items:baseline; justify-content:space-between; gap:8px;}
+.ground b{font-size:12.5px; font-weight:700;}
+.ground i{font-family:var(--mono); font-size:10px; font-style:normal; color:var(--ink-3);}
+
 .tones{display:grid; grid-template-columns:1fr; gap:14px;}
 @media (min-width:700px){.tones{grid-template-columns:repeat(3,1fr);}}
 .tone{display:flex; flex-direction:column; gap:8px;}
@@ -1384,14 +1460,49 @@ function glass(c,x,y,w,h,r,o){
   rr(c,x,y,w,h,r); c.fillStyle=fill; c.fill(); c.restore();
   c.save(); rr(c,x,y,w,h,r); c.lineWidth=1.4; c.strokeStyle=stroke; c.stroke(); c.restore();
 }
-/* the tool's own tone formula: 0 melts panels into #f5f5f5,
-   positive lifts toward white, negative sinks to soft grey */
-function glassFill(tint,weight){
-  var k=Math.abs(tint)/100;
-  var span=tint<0?32:10;
-  var c=Math.round(245+(tint<0?-1:1)*span*k);
+/* ---- the tool's own colour derivation, ported verbatim ---- */
+function hexRgb(h){
+  h=String(h).trim().replace(/^#/,"");
+  if(h.length===3) h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  var n=parseInt(h,16);
+  if(h.length!==6||isNaN(n)) return null;
+  return [(n>>16)&255,(n>>8)&255,n&255];
+}
+function mixTo(rgb,t,f){ return rgb.map(function(v,i){ return v+(t[i]-v)*f; }); }
+function srgbLin(c){ c/=255; return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4); }
+function relLum(c){ return 0.2126*srgbLin(c[0])+0.7152*srgbLin(c[1])+0.0722*srgbLin(c[2]); }
+function cssc(c,a){
+  var r=Math.round(c[0]),g=Math.round(c[1]),b=Math.round(c[2]);
+  return a===undefined?"rgb("+r+","+g+","+b+")":"rgba("+r+","+g+","+b+","+a+")";
+}
+var BLACK=[0,0,0], WHITE=[255,255,255];
+function buildPalette(hex){
+  var bg=hexRgb(hex)||[245,245,245];
+  var onDark=relLum(bg)<0.42;
+  var ink=onDark?mixTo(bg,WHITE,0.92):mixTo(bg,BLACK,0.885);
+  var inkStrong=onDark?mixTo(bg,WHITE,0.96):mixTo(bg,BLACK,0.918);
+  return {
+    bg:bg, hex:cssc(bg), onDark:onDark,
+    ink:cssc(ink), inkStrong:cssc(inkStrong),
+    idleRgb:mixTo(bg,ink,0.258).map(Math.round).join(","),
+    tabBg:onDark?cssc(mixTo(bg,WHITE,0.90)):"#46443f",
+    tabFg:onDark?cssc(mixTo(bg,BLACK,0.80)):"#ffffff",
+    tabShadow:onDark?"rgba(0,0,0,0.45)":"rgba(0,0,0,0.14)",
+    stroke:onDark?"rgba(255,255,255,0.10)":"rgba(0,0,0,0.055)",
+    strokeSoft:onDark?"rgba(255,255,255,0.09)":"rgba(0,0,0,0.05)",
+    shadow:onDark?"rgba(0,0,0,0.38)":"rgba(0,0,0,0.055)"
+  };
+}
+/* Tone reads its span off the background's own headroom, which is why the
+   default lands on the original 10 up / 32 down. */
+function glassFill(pal,tint,weight){
+  var k=Math.abs(tint)/100, bg=pal.bg, up=tint>=0;
+  function room(u){ return u?255-Math.max(bg[0],bg[1],bg[2]):Math.min(bg[0],bg[1],bg[2]); }
+  var head=room(up);
+  if(head<6 && room(!up)>head){ up=!up; head=room(up); }
+  var d=(up?1:-1)*Math.min(32,head)*k;
   var a=Math.min(0.95,(0.30+0.55*k)*weight);
-  return "rgba("+c+","+c+","+c+","+a.toFixed(3)+")";
+  return cssc([bg[0]+d,bg[1]+d,bg[2]+d],a.toFixed(3));
 }
 function clipCircle(c,cx,cy,r,fn){
   c.save(); c.beginPath(); c.arc(cx,cy,r,0,Math.PI*2); c.clip(); fn(); c.restore();
@@ -1617,12 +1728,13 @@ function drawCard(c,W,H,opt){
   var tint=opt.tint===undefined?50:opt.tint;
   var fade=opt.fade===undefined?100:opt.fade;
   var session=opt.session||"New York";
+  var P=buildPalette(opt.bg||"#f5f5f5");
   var symbol=opt.symbol||"NQ";
   var tf=opt.tf||"H4";
 
   c.setTransform(1,0,0,1,0,0);
   c.clearRect(0,0,W,H);
-  c.fillStyle="#f5f5f5"; c.fillRect(0,0,W,H);
+  c.fillStyle=P.hex; c.fillRect(0,0,W,H);
   if(opt.chart!==false) drawChart(c,0,0,W,H,opt.seed||7);
 
   /* session tabs — active pinned to centre */
@@ -1643,24 +1755,24 @@ function drawCard(c,W,H,opt){
     var active=(i===1), cx2=t.x+t.w/2;
     if(active){
       c.save();
-      c.shadowColor="rgba(0,0,0,0.14)"; c.shadowBlur=16; c.shadowOffsetY=4;
-      rr(c,t.x,tabY,t.w,tabH,tabH/2); c.fillStyle="#46443f"; c.fill();
+      c.shadowColor=P.tabShadow; c.shadowBlur=16; c.shadowOffsetY=4;
+      rr(c,t.x,tabY,t.w,tabH,tabH/2); c.fillStyle=P.tabBg; c.fill();
       c.restore();
     }
     c.font=tabFont; c.textAlign="center"; c.textBaseline="middle";
-    if(active){ c.fillStyle="#ffffff"; }
+    if(active){ c.fillStyle=P.tabFg; }
     else{
       var left=cx2-t.tw/2, f=fade/100;
       var a0=(1-f).toFixed(3), a1=(1-0.45*f).toFixed(3);
       var gr=c.createLinearGradient(left,0,left+t.tw,0);
       if(i===0){
-        gr.addColorStop(0,"rgba(189,189,189,"+a0+")");
-        gr.addColorStop(0.45,"rgba(189,189,189,"+a1+")");
-        gr.addColorStop(1,"rgba(189,189,189,1)");
+        gr.addColorStop(0,"rgba("+P.idleRgb+","+a0+")");
+        gr.addColorStop(0.45,"rgba("+P.idleRgb+","+a1+")");
+        gr.addColorStop(1,"rgba("+P.idleRgb+",1)");
       }else{
-        gr.addColorStop(0,"rgba(189,189,189,1)");
-        gr.addColorStop(0.55,"rgba(189,189,189,"+a1+")");
-        gr.addColorStop(1,"rgba(189,189,189,"+a0+")");
+        gr.addColorStop(0,"rgba("+P.idleRgb+",1)");
+        gr.addColorStop(0.55,"rgba("+P.idleRgb+","+a1+")");
+        gr.addColorStop(1,"rgba("+P.idleRgb+","+a0+")");
       }
       c.fillStyle=gr;
     }
@@ -1671,7 +1783,7 @@ function drawCard(c,W,H,opt){
   var iconR=32*u, railPad=15*u;
   var barH=iconR*2+railPad*2;
   var barY=H-16-barH, barX=16;
-  glass(c,barX,barY,W-32,barH,barH/2,{fill:glassFill(tint,1),stroke:"rgba(0,0,0,0.05)"});
+  glass(c,barX,barY,W-32,barH,barH/2,{fill:glassFill(P,tint,1),stroke:P.strokeSoft});
 
   var cy=barY+barH/2;
   var iconCX=barX+railPad+iconR;
@@ -1681,8 +1793,8 @@ function drawCard(c,W,H,opt){
   var tw=c.measureText(sym.label).width;
   var capH=58*u, capX=iconCX+iconR*0.42, textX=iconCX+iconR+26*u;
   glass(c,capX,cy-capH/2,textX-capX+tw+30*u,capH,capH/2,
-        {fill:glassFill(tint,1.25),stroke:"rgba(0,0,0,0.055)",shadow:false});
-  c.font=symFont; c.fillStyle="#1c1c1c";
+        {fill:glassFill(P,tint,1.25),stroke:P.stroke,shadow:false});
+  c.font=symFont; c.fillStyle=P.ink;
   c.textAlign="left"; c.textBaseline="middle";
   c.fillText(sym.label,textX,cy+1*u);
   drawSymbolIcon(c,sym.id,iconCX,cy,iconR);
@@ -1696,9 +1808,9 @@ function drawCard(c,W,H,opt){
     c.font="400 "+Math.round(26*u)+"px "+SANS;
     var mtw=markText?c.measureText(markText).width:0, mgap=markText?14*u:0;
     var gx=W/2-(markSize+mgap+mtw)/2;
-    drawMark(c,opt.logo||"x",gx+markSize/2,cy,markSize,"#1c1c1c");
+    drawMark(c,opt.logo||"x",gx+markSize/2,cy,markSize,P.ink);
     if(markText){
-      c.fillStyle="#1c1c1c"; c.textAlign="left"; c.textBaseline="middle";
+      c.fillStyle=P.ink; c.textAlign="left"; c.textBaseline="middle";
       c.fillText(markText,gx+markSize+mgap,cy+1*u);
     }
     if("letterSpacing" in c) c.letterSpacing="0px";
@@ -1710,8 +1822,8 @@ function drawCard(c,W,H,opt){
   c.font=tfFont;
   var tfw=c.measureText(tf).width;
   var tfH=62*u, tfW=Math.max(104*u,tfw+56*u), tfY=barY-20*u-tfH;
-  glass(c,(W-tfW)/2,tfY,tfW,tfH,22*u,{fill:glassFill(tint,1.05),stroke:"rgba(0,0,0,0.05)"});
-  c.font=tfFont; c.fillStyle="#141414";
+  glass(c,(W-tfW)/2,tfY,tfW,tfH,22*u,{fill:glassFill(P,tint,1.05),stroke:P.strokeSoft});
+  c.font=tfFont; c.fillStyle=P.inkStrong;
   c.textAlign="center"; c.textBaseline="middle";
   c.fillText(tf,W/2,tfY+tfH/2+1*u);
 }
@@ -2011,6 +2123,37 @@ fadeInput.addEventListener("input",function(){
   paintTabs();
 });
 
+/* the same card on four grounds, every colour derived rather than restyled */
+var GROUNDS=[
+  {hex:"#f5f5f5",name:"Default"},
+  {hex:"#efe9df",name:"Warm linen"},
+  {hex:"#e8eef4",name:"Cool mist"},
+  {hex:"#0f1116",name:"Midnight"}
+];
+function buildGrounds(){
+  var box=document.getElementById("grounds");
+  GROUNDS.forEach(function(o){
+    var w=document.createElement("div"); w.className="ground";
+    var cv=document.createElement("canvas"); cv.width=520; cv.height=293;
+    cv.setAttribute("aria-label","The card rendered on "+o.name);
+    var cap=document.createElement("div"); cap.className="ground-h";
+    var nm=document.createElement("b"); nm.textContent=o.name;
+    var hx=document.createElement("i"); hx.textContent=o.hex.toUpperCase();
+    cap.appendChild(nm); cap.appendChild(hx);
+    w.appendChild(cv); w.appendChild(cap);
+    box.appendChild(w);
+
+    var off=document.createElement("canvas"); off.width=1920; off.height=1080;
+    drawCard(off.getContext("2d"),1920,1080,{
+      bg:o.hex, tint:50, symbol:"NQ", session:"New York", tf:"H4", seed:19, u:1.3
+    });
+    var c=cv.getContext("2d");
+    c.imageSmoothingEnabled=true; c.imageSmoothingQuality="high";
+    c.drawImage(off,0,0,1920,1080,0,0,520,293);
+    off.width=0; off.height=0;
+  });
+}
+
 /* tone samples — the rail drawn at three tone values */
 var TONES=[
   {t:-100,name:"−100 darker",  copy:"Panels sink below the background into a soft grey block. The move for bright, near-white charts."},
@@ -2034,7 +2177,7 @@ function buildTones(){
     /* render the real card at 1920x1080 then scale it into the tile */
     var off=document.createElement("canvas"); off.width=1920; off.height=1080;
     drawCard(off.getContext("2d"),1920,1080,{
-      tint:o.t, symbol:"ES", session:"London", tf:"M15", seed:41, u:1.25
+      tint:o.t, symbol:"ES", session:"London", tf:"M15", seed:41, u:1.25, bg:"#f5f5f5"
     });
     c.imageSmoothingEnabled=true; c.imageSmoothingQuality="high";
     c.drawImage(off,0,0,1920,1080,0,0,520,290);
@@ -2125,6 +2268,7 @@ if(inFrame){
 
 buildHeroChips();
 buildBadges();
+buildGrounds();
 buildTones();
 go(0);
 repaintAll();
