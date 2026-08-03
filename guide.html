@@ -827,7 +827,11 @@ body{
    arriving on a surface that was never see-through. Nothing overlaps,
    nothing shows through, and the fade is real.
 ────────────────────────────────────────────────────────────────────────── */
-.slide.on{ visibility:visible; pointer-events:auto; }
+/* opacity:1 is load-bearing. The base .slide rule sets opacity:0, which used
+   to be undone by a slideIn keyframe; when that animation was removed the
+   restore went with it and every slide rendered blank. Layout stayed correct,
+   so nothing that measured overflow or errors noticed. */
+.slide.on{ visibility:visible; pointer-events:auto; opacity:1; }
 
 .slide.on .panel{ animation:panelIn .3s cubic-bezier(.22,.9,.28,1) both; }
 @keyframes panelIn{
