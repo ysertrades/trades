@@ -485,12 +485,19 @@
         <div class="two">
           <div class="col">
             <h3 class="h3">Why the big sizes are actually bigger</h3>
-            <p>Nothing is upscaled. At 8K every label, badge and panel is drawn again at
-              8K — the type is rasterised at that size rather than stretched from a 1080p
-              bitmap — and the image pixels come from your original screenshot rather than
-              the editing copy.</p>
-            <p>1080p is the interesting case: it renders at double size and resolves down,
-              which is the cleanest possible result at that resolution.</p>
+            <p>Nothing is upscaled. Every label, badge and panel is drawn again at the
+              output size rather than stretched from the preview, and the image pixels
+              come from your original screenshot, not the editing copy.</p>
+            <p>Each size is also rendered larger than it is saved and resolved down, which
+              smooths the curve of a badge and the edge of the type — a full double pass
+              at 1080p and 4K, a partial one at 6K.</p>
+
+            <div class="note warn">
+              <span class="note-lab">Your screenshot is the ceiling</span>
+              <p>That cleans up the overlay, not the chart. A 1080p screenshot exported at
+                8K gives crisp badges over a chart with no more detail than it started
+                with. Grab the source large and the big sizes pay off.</p>
+            </div>
             <div class="note">
               <span class="note-lab">Filenames</span>
               <p>Exports name themselves from what is on the card:
@@ -810,45 +817,35 @@ body{
   visibility:hidden; pointer-events:none; opacity:0;
 }
 
-/* ── Cross-dissolve ───────────────────────────────────────────────────────
-   A plain fade would show the chart backdrop straight through the card while
-   the panel is half-transparent — the flash this deck used to have. So the
-   outgoing slide is held in place, still fully opaque, and the incoming one
-   fades in on top of it. The card area is covered by an opaque panel for
-   every frame of the change, so the dissolve reads as one card becoming the
-   next rather than both dropping out to the chart field underneath.
-────────────────────────────────────────────────────────────────────────── */
-.slide.leaving{ visibility:visible; opacity:1; z-index:1; pointer-events:none; }
-.slide.on{
-  visibility:visible; pointer-events:auto; z-index:2;
-  animation:slideIn .46s cubic-bezier(.32,.86,.3,1) both;
-}
-/* Opacity resolves at 62% of the run, so the two sets of text only overlap
-   briefly and the card is already clean while it finishes settling. */
-@keyframes slideIn{ from{ opacity:0; } 62%{ opacity:1; } to{ opacity:1; } }
+/* ── One card, new contents ───────────────────────────────────────────────
+   Two earlier attempts each had a tell. Fading the panel showed the chart
+   backdrop through it while it was half-transparent; cross-dissolving held
+   the old card underneath, so you saw it ghosting behind the new one.
 
-/* The panel rises as it resolves, and its blocks settle in sequence, so the
-   change has direction instead of being a flat dip. Transforms only — the
-   container above owns the fade. */
-.slide.on .panel{ animation:panelIn .58s cubic-bezier(.22,.92,.26,1) both; }
+   Neither is needed. The card is opaque and every slide puts it in the same
+   place, so the outgoing slide can simply go, and what fades is the content
+   arriving on a surface that was never see-through. Nothing overlaps,
+   nothing shows through, and the fade is real.
+────────────────────────────────────────────────────────────────────────── */
+.slide.on{ visibility:visible; pointer-events:auto; }
+
+.slide.on .panel{ animation:panelIn .3s cubic-bezier(.22,.9,.28,1) both; }
 @keyframes panelIn{
-  from{ transform:translateY(18px) scale(.985); }
+  from{ transform:translateY(6px); }
   to{ transform:none; }
 }
-.slide.on .panel > *{ animation:contentIn .6s cubic-bezier(.22,.92,.26,1) both; }
+.slide.on .panel > *{ animation:contentIn .34s cubic-bezier(.22,.9,.28,1) both; }
 @keyframes contentIn{
-  from{ transform:translateY(12px); }
-  to{ transform:none; }
+  from{ opacity:0; transform:translateY(9px); }
+  to{ opacity:1; transform:none; }
 }
-.slide.on .panel > *:nth-child(1){ animation-delay:.04s; }
-.slide.on .panel > *:nth-child(2){ animation-delay:.09s; }
-.slide.on .panel > *:nth-child(3){ animation-delay:.14s; }
-.slide.on .panel > *:nth-child(4){ animation-delay:.18s; }
-.slide.on .panel > *:nth-child(n+5){ animation-delay:.21s; }
+.slide.on .panel > *:nth-child(1){ animation-delay:.02s; }
+.slide.on .panel > *:nth-child(2){ animation-delay:.06s; }
+.slide.on .panel > *:nth-child(3){ animation-delay:.09s; }
+.slide.on .panel > *:nth-child(4){ animation-delay:.12s; }
+.slide.on .panel > *:nth-child(n+5){ animation-delay:.14s; }
 
 @media (prefers-reduced-motion:reduce){
-  .slide.on{ animation:none; opacity:1; }
-  .slide.leaving{ visibility:hidden; }
   .slide.on .panel, .slide.on .panel > *{ animation:none; }
 }
 @media (min-width:760px){ .slide{ padding:26px 20px 30px; } }
@@ -1984,36 +1981,22 @@ slides.forEach(function(s,i){
 });
 var dots=[].slice.call(dotsBox.children);
 
-var DISSOLVE=460, leaveTimer=null;
 function go(n){
   n=Math.max(0,Math.min(slides.length-1,n));
   if(n===idx && slides[idx].classList.contains("on")) return;
 
-  /* Hold the outgoing slide, opaque, beneath the incoming one for the length
-     of the dissolve. Without it the fade would happen against the chart
-     backdrop rather than against the card being replaced. */
-  var out=slides[idx];
-  out.classList.remove("on");
-  out.classList.add("leaving");
+  /* The outgoing slide goes at once. Nothing is held behind the new card, so
+     there is nothing to ghost through it. */
+  slides[idx].classList.remove("on");
   dots[idx].setAttribute("aria-selected","false");
 
   idx=n;
-  slides[idx].classList.remove("leaving");
   slides[idx].classList.add("on");
   slides[idx].scrollTop=0;
   dots[idx].setAttribute("aria-selected","true");
   curOut.textContent=idx+1;
   prevBtn.disabled=(idx===0);
   nextBtn.disabled=(idx===slides.length-1);
-
-  /* One timer, reset on every change, so rattling through the dots leaves
-     nothing stranded in the leaving state. */
-  clearTimeout(leaveTimer);
-  leaveTimer=setTimeout(function(){
-    slides.forEach(function(s){
-      if(!s.classList.contains("on")) s.classList.remove("leaving");
-    });
-  },DISSOLVE+60);
 }
 prevBtn.addEventListener("click",function(){ go(idx-1); });
 nextBtn.addEventListener("click",function(){ go(idx+1); });

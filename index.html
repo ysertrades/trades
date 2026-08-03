@@ -1185,12 +1185,21 @@ $("exportBtn").onclick=function(){
   showError("");
   $("result").classList.remove("on");
 
-  /* Render offscreen at the chosen size. Every overlay is vector drawn, so
-     it is rasterised natively at the output resolution rather than being
-     scaled up from the preview. At 1x we render 2x and downsample, which
-     gives the cleanest possible 1080p. */
+  /* Render offscreen at the chosen size. Every overlay is vector drawn, so it
+     is rasterised natively at the output resolution rather than scaled up
+     from the preview.
+
+     Every size is also supersampled now, not just 1080p: render larger, then
+     resolve down, which is what actually cleans up the edges of the badges,
+     the pill and the type. Only 1080p used to get that, so choosing a bigger
+     export bought pixels but lost the anti-aliasing pass and did not look
+     meaningfully better.
+
+     The ceiling of 4 keeps the working canvas at 7680x4320 — exactly what an
+     8K export already allocates today, so nothing new can run out of memory
+     that did not before, and attempt() drops the supersample if it does. */
   const mul=S.exportMul;
-  const renderK=(mul===1)?2:mul;
+  const renderK=Math.min(4,mul*2);
   const outW=W*mul, outH=H*mul;
   const name=S.symbol+"-"+S.session.replace(/\s+/g,"")+"-"+S.timeframe+"-"+outW+"x"+outH+".png";
 
