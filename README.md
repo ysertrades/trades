@@ -16,7 +16,8 @@ so it works the same embedded in an iframe as it does standalone.
    a side, which is how you cut a half-drawn candle without shifting the frame.
 3. **Set the labels** — symbol, session, timeframe.
 4. **Sign it** — pick the X or Instagram mark and type your own username.
-5. **Export PNG** — 1920 × 1080 composition, output up to 7680 × 4320.
+5. **Set the ground** — keep `#f5f5f5` or pick any colour; the overlays follow it.
+6. **Export PNG** — 1920 × 1080 composition, output up to 7680 × 4320.
 
 The preview canvas *is* the export canvas, so the downloaded file is always
 pixel-identical to what you see. There is no second render path that can drift.
@@ -32,6 +33,7 @@ pixel-identical to what you see. There is no second render path that can drift.
 | Zoom | Slider plus ±0.1% and ±0.5% steps for fine framing |
 | Position | 1 px and 10 px nudges, or recentre |
 | Trim edges | Per-side crop in source pixels |
+| Background | Six presets, a colour picker and a hex field. Default `#f5f5f5`. Every overlay colour is derived from whatever you pick — glass, type, session pill, hairlines and shadows all follow, so the card stays readable on a black ground as readily as a white one |
 | Overlay size | Scales all the furniture 80–120% |
 | Export quality | 1080p, 4K, 6K or 8K. Overlays are redrawn at the output resolution, not upscaled |
 | Overlay tone | Centre blends the glass panels into the background, right lifts them toward white, left sinks them to a soft grey so they stay visible |
@@ -104,7 +106,10 @@ Everything lives in the `<script>` block of `index.html`.
   switching between them needs no source edit. For a third mark, append to
   `LOGOS` and add a branch to `drawMark()`. Draw it inside a 24 × 24 space the
   way `drawXMark()` and `drawInstaMark()` do and it scales with everything else.
-- **Change the background** — the `BG` constant.
+- **Change the preset grounds** — the background is a panel control, so changing
+  it needs no source edit. To change which swatches are offered, edit
+  `BACKDROPS`. Everything downstream comes out of `buildPalette()`, so a new
+  colour needs no other change.
 - **Change the export size** — the `W` and `H` constants, and the `width` and
   `height` attributes on the `<canvas>` element.
 - **Change the fonts** — the `POPPINS` and `INTER` constants and the Google
