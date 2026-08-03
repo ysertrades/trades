@@ -129,8 +129,13 @@ Everything lives in the `<script>` block of `index.html`.
   no detail from the source screenshot is lost.
 - Every overlay is drawn as vectors and text, never as bitmaps, so exporting at
   4K or 8K rasterises them natively at that size rather than scaling them up.
-  At 1080p the frame is rendered at 2× and resolved down, which is the cleanest
-  possible result at that size.
+  Every size is also rendered larger than it is saved and resolved down, which
+  is what smooths the curve of a badge and the edge of the type — 1080p and 4K
+  get a full 2× pass, 6K a partial one, and 8K is already at the largest canvas
+  the export will allocate.
+- That supersampling cleans up the overlay, not the chart. A 1080p screenshot
+  exported at 8K gives crisp badges and type over a chart with no more detail
+  than it started with; the source screenshot is the ceiling.
 - If a device cannot allocate the canvas for a large export it falls back
   automatically and tells you to pick a smaller size, rather than failing
   silently.
