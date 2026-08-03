@@ -693,189 +693,6 @@
     </div>
   </section>
 
-  <!-- ══════════════════════════ PUBLISH ══════════════════════════ -->
-  <section class="slide" data-title="Publish">
-    <div class="inner">
-      <article class="panel">
-        <header class="head">
-          <div class="eyebrow"><span class="tag">Reference</span><span class="kicker">Hosting</span><span class="rule"></span></div>
-          <h2>Publish &amp; embed</h2>
-          <p class="sub">One static file. Anywhere that serves HTML will do.</p>
-        </header>
-
-        <div class="two">
-          <div class="col">
-            <h3 class="h3">GitHub Pages</h3>
-            <p>Push the repository, then open
-              <span class="k">Settings → Pages → Source → GitHub Actions</span>. The
-              included workflow publishes on every push to <code>main</code>.</p>
-            <pre><code>git add .
-git commit -m "Trades card editor"
-git push -u origin main</code></pre>
-            <p class="fine">Prefer no Actions? Set <span class="k">Source → Deploy from a
-              branch → main / (root)</span> instead. An <code>index.html</code> at the
-              repository root is all Pages needs.</p>
-
-            <div class="note warn">
-              <span class="note-lab">Housekeeping</span>
-              <p>The repository currently carries three deploy workflows — one static, two
-                Jekyll. There is no Jekyll site here (no <code>_config.yml</code>, no
-                <code>Gemfile</code>), so only <code>static.yml</code> does any work. The
-                other two are safe to delete.</p>
-            </div>
-          </div>
-
-          <div class="col">
-            <h3 class="h3">Embedding in Whop</h3>
-            <ol class="steps">
-              <li>Deploy first — you need a public <code>https://</code> URL.</li>
-              <li>In the Whop dashboard, create an app and add an <b>App view</b>.</li>
-              <li>Point the view at your deployed address.</li>
-              <li>Install the app into your whop and open it.</li>
-            </ol>
-            <p>When the editor detects it is running inside a frame it slims its own header
-              to give the canvas more room, and reports its height to the parent for hosts
-              that size their frames dynamically. There is nothing to configure.</p>
-
-            <div class="note">
-              <span class="note-lab">The guide opens in place</span>
-              <p>This guide is a panel inside the editor, not a new tab — a tab is either
-                blocked by the host's frame sandbox or throws you out of the app view.
-                <kbd>Esc</kbd> or <span class="k">Close</span> returns you to the canvas
-                as you left it. Ship <code>guide.html</code> next to
-                <code>index.html</code> and the button resolves on its own; leave it out
-                and the button says so rather than showing a 404.</p>
-            </div>
-
-            <h3 class="h3">Anywhere else</h3>
-            <p>Upload both files to Netlify, Vercel, Cloudflare Pages, an S3 bucket, or
-              your own box. There are no server-side requirements at all, and the
-              <span class="k">Guide</span> button uses a relative link, so nothing needs
-              reconfiguring per environment.</p>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-
-  <!-- ══════════════════════════ TROUBLESHOOTING ══════════════════════════ -->
-  <section class="slide" data-title="Troubleshooting">
-    <div class="inner">
-      <article class="panel">
-        <header class="head">
-          <div class="eyebrow"><span class="tag">Reference</span><span class="kicker">Diagnosis</span><span class="rule"></span></div>
-          <h2>When something looks wrong</h2>
-          <p class="sub">Each of these is a designed behaviour, not a bug.</p>
-        </header>
-
-        <div class="spec cols2">
-          <div class="row">
-            <span class="lab">The image didn't decode</span>
-            <p>Almost always HEIC from an iPhone. Browsers cannot read it. Save as PNG or
-              JPG, or switch the camera to Most Compatible.</p>
-          </div>
-          <div class="row">
-            <span class="lab">Nothing downloaded</span>
-            <p>You are likely inside an embedded frame whose sandbox blocks downloads. Use
-              <span class="k">Open in tab</span> or <span class="k">Share</span> from the
-              bar under the canvas — the file is not trapped.</p>
-          </div>
-          <div class="row">
-            <span class="lab">Not enough memory for that size</span>
-            <p>The device could not allocate a canvas that large. Drop from 8K to 6K or 4K.
-              The export already retried once at a lower internal resolution before saying so.</p>
-          </div>
-          <div class="row">
-            <span class="lab">Text looks like the wrong font</span>
-            <p>Poppins and Inter had not arrived yet. The card redraws itself automatically
-              once they load, so the exported file never carries fallback type.</p>
-          </div>
-          <div class="row">
-            <span class="lab">Trim stopped responding</span>
-            <p>Opposite sides have met. At least 20&nbsp;px of image must remain, so the
-              last trim was refused. Back the other side off first.</p>
-          </div>
-          <div class="row">
-            <span class="lab">The new tab was blocked</span>
-            <p>A pop-up blocker caught it. Allow pop-ups for the page, or use
-              <span class="k">Share</span> instead.</p>
-          </div>
-          <div class="row">
-            <span class="lab">Panels vanish on a light chart</span>
-            <p>Tone is near <span class="k">flat</span>, which is exactly what flat means —
-              the glass matches the background. Push tone negative so the panels sink into
-              a soft grey and read again.</p>
-          </div>
-          <div class="row">
-            <span class="lab">Zoom slider won't move</span>
-            <p>No screenshot is loaded. The zoom control stays dimmed and inert until there
-              is something to zoom.</p>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-
-  <!-- ══════════════════════════ CUSTOMISE ══════════════════════════ -->
-  <section class="slide" data-title="Customise">
-    <div class="inner">
-      <article class="panel">
-        <header class="head">
-          <div class="eyebrow"><span class="tag">Reference</span><span class="kicker">Source</span><span class="rule"></span></div>
-          <h2>Make it yours</h2>
-          <p class="sub">Everything lives in the single <code>&lt;script&gt;</code> block of <code>index.html</code>.</p>
-        </header>
-
-        <div class="spec cols2">
-          <div class="row">
-            <span class="lab">Add a symbol</span>
-            <p>Append an entry to <code>SYMBOLS</code>, then add a matching branch in
-              <code>drawSymbolIcon()</code>. Badges are composed from
-              <code>numberBadge()</code>, <code>metalBadge()</code> and the flag helpers, so
-              a new instrument is usually one line each.</p>
-          </div>
-          <div class="row">
-            <span class="lab">Add another logo</span>
-            <p>The logo and username are panel controls now — no source edit needed to
-              change them. To add a <em>third</em> mark, append to <code>LOGOS</code> and
-              add a branch to <code>drawMark()</code>. Draw it inside a
-              24&nbsp;×&nbsp;24 space like <code>drawXMark()</code> and
-              <code>drawInstaMark()</code> do, and it scales with everything else.</p>
-          </div>
-          <div class="row">
-            <span class="lab">Change the preset grounds</span>
-            <p>The background is a panel control now — no source edit to change it. To
-              change which swatches are offered, edit <code>BACKDROPS</code>. Everything
-              downstream comes from <code>buildPalette()</code>, so a new colour needs no
-              other change.</p>
-          </div>
-          <div class="row">
-            <span class="lab">Change the export size</span>
-            <p>The <code>W</code> and <code>H</code> constants, plus the matching
-              <code>width</code> and <code>height</code> attributes on the
-              <code>&lt;canvas&gt;</code> element. Both must agree.</p>
-          </div>
-          <div class="row">
-            <span class="lab">Change the fonts</span>
-            <p>The <code>POPPINS</code> and <code>INTER</code> constants and the Google
-              Fonts <code>&lt;link&gt;</code> in <code>&lt;head&gt;</code>.</p>
-          </div>
-          <div class="row">
-            <span class="lab">Adjust the layout</span>
-            <p>All overlay geometry sits in <code>draw()</code>, written in
-              1920&nbsp;×&nbsp;1080 coordinates and multiplied by the overlay-size scale
-              <code>u</code>. Keep the <code>u</code> and the layout stays scalable.</p>
-          </div>
-        </div>
-
-        <div class="strip">
-          <span class="strip-lab">Licence</span>
-          <p>MIT. Fork it, rebrand it, ship it.</p>
-        </div>
-      </article>
-    </div>
-  </section>
-
   <!-- ══════════════════════════ RECIPE ══════════════════════════ -->
   <section class="slide" data-title="Recipe">
     <div class="inner">
@@ -1019,29 +836,48 @@ body{
   display:flex; overflow-y:auto; overflow-x:hidden;
   padding:20px 16px 24px;
   -webkit-overflow-scrolling:touch;
-  visibility:hidden; pointer-events:none;
+  visibility:hidden; pointer-events:none; opacity:0;
 }
-.slide.on{ visibility:visible; pointer-events:auto; }
-/* The panel itself only ever moves — its background never animates opacity, so
-   the chart behind the card can never bleed through mid-change. The softness
-   comes from the contents fading up on top of that opaque surface, staggered
-   so the heading leads and the body follows. */
-.slide.on .panel{ animation:panelIn .46s cubic-bezier(.22,.92,.28,1) both; }
+
+/* ── Cross-dissolve ───────────────────────────────────────────────────────
+   A plain fade would show the chart backdrop straight through the card while
+   the panel is half-transparent — the flash this deck used to have. So the
+   outgoing slide is held in place, still fully opaque, and the incoming one
+   fades in on top of it. The card area is covered by an opaque panel for
+   every frame of the change, so the dissolve reads as one card becoming the
+   next rather than both dropping out to the chart field underneath.
+────────────────────────────────────────────────────────────────────────── */
+.slide.leaving{ visibility:visible; opacity:1; z-index:1; pointer-events:none; }
+.slide.on{
+  visibility:visible; pointer-events:auto; z-index:2;
+  animation:slideIn .46s cubic-bezier(.32,.86,.3,1) both;
+}
+/* Opacity resolves at 62% of the run, so the two sets of text only overlap
+   briefly and the card is already clean while it finishes settling. */
+@keyframes slideIn{ from{ opacity:0; } 62%{ opacity:1; } to{ opacity:1; } }
+
+/* The panel rises as it resolves, and its blocks settle in sequence, so the
+   change has direction instead of being a flat dip. Transforms only — the
+   container above owns the fade. */
+.slide.on .panel{ animation:panelIn .58s cubic-bezier(.22,.92,.26,1) both; }
 @keyframes panelIn{
-  from{ transform:translateY(16px) scale(.988); }
+  from{ transform:translateY(18px) scale(.985); }
   to{ transform:none; }
 }
-.slide.on .panel > *{ animation:contentIn .5s cubic-bezier(.22,.92,.28,1) both; }
+.slide.on .panel > *{ animation:contentIn .6s cubic-bezier(.22,.92,.26,1) both; }
 @keyframes contentIn{
-  from{ opacity:0; transform:translateY(8px); }
-  to{ opacity:1; transform:none; }
+  from{ transform:translateY(12px); }
+  to{ transform:none; }
 }
-.slide.on .panel > *:nth-child(1){ animation-delay:.03s; }
-.slide.on .panel > *:nth-child(2){ animation-delay:.08s; }
-.slide.on .panel > *:nth-child(3){ animation-delay:.13s; }
-.slide.on .panel > *:nth-child(4){ animation-delay:.17s; }
-.slide.on .panel > *:nth-child(n+5){ animation-delay:.2s; }
+.slide.on .panel > *:nth-child(1){ animation-delay:.04s; }
+.slide.on .panel > *:nth-child(2){ animation-delay:.09s; }
+.slide.on .panel > *:nth-child(3){ animation-delay:.14s; }
+.slide.on .panel > *:nth-child(4){ animation-delay:.18s; }
+.slide.on .panel > *:nth-child(n+5){ animation-delay:.21s; }
+
 @media (prefers-reduced-motion:reduce){
+  .slide.on{ animation:none; opacity:1; }
+  .slide.leaving{ visibility:hidden; }
   .slide.on .panel, .slide.on .panel > *{ animation:none; }
 }
 @media (min-width:760px){ .slide{ padding:26px 20px 30px; } }
@@ -2210,18 +2046,36 @@ slides.forEach(function(s,i){
 });
 var dots=[].slice.call(dotsBox.children);
 
+var DISSOLVE=460, leaveTimer=null;
 function go(n){
   n=Math.max(0,Math.min(slides.length-1,n));
   if(n===idx && slides[idx].classList.contains("on")) return;
-  slides[idx].classList.remove("on");
+
+  /* Hold the outgoing slide, opaque, beneath the incoming one for the length
+     of the dissolve. Without it the fade would happen against the chart
+     backdrop rather than against the card being replaced. */
+  var out=slides[idx];
+  out.classList.remove("on");
+  out.classList.add("leaving");
   dots[idx].setAttribute("aria-selected","false");
+
   idx=n;
+  slides[idx].classList.remove("leaving");
   slides[idx].classList.add("on");
   slides[idx].scrollTop=0;
   dots[idx].setAttribute("aria-selected","true");
   curOut.textContent=idx+1;
   prevBtn.disabled=(idx===0);
   nextBtn.disabled=(idx===slides.length-1);
+
+  /* One timer, reset on every change, so rattling through the dots leaves
+     nothing stranded in the leaving state. */
+  clearTimeout(leaveTimer);
+  leaveTimer=setTimeout(function(){
+    slides.forEach(function(s){
+      if(!s.classList.contains("on")) s.classList.remove("leaving");
+    });
+  },DISSOLVE+60);
 }
 prevBtn.addEventListener("click",function(){ go(idx-1); });
 nextBtn.addEventListener("click",function(){ go(idx+1); });
