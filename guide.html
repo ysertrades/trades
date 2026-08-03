@@ -456,8 +456,8 @@
               lens instead of being punched out by a solid block.</p>
             <figure class="markfig">
               <canvas id="marks" width="880" height="300" aria-label="The X mark and the Instagram mark side by side over a coloured band, showing that the Instagram outline lets the band show through"></canvas>
-              <figcaption>Both marks over a band of chart. The X blocks it; the Instagram
-                outline lets it through.</figcaption>
+              <figcaption>The X is a solid glyph; the Instagram mark is stroked, so on the
+                card the chart carries on through the squircle and the lens.</figcaption>
             </figure>
             <p class="fine">Both are rendered in the card's ink, not brand colour, so the
               signature stays part of the card rather than competing with it.</p>
@@ -1022,12 +1022,28 @@ body{
   visibility:hidden; pointer-events:none;
 }
 .slide.on{ visibility:visible; pointer-events:auto; }
-/* Only the panel moves, and only by transform. Nothing animates opacity, so
-   the card never turns translucent mid-change and the chart behind it stays
-   behind it. */
-.slide.on .panel{ animation:panelIn .3s cubic-bezier(.22,.8,.3,1) both; }
-@keyframes panelIn{ from{ transform:translateY(12px); } to{ transform:none; } }
-@media (prefers-reduced-motion:reduce){ .slide.on .panel{ animation:none; } }
+/* The panel itself only ever moves — its background never animates opacity, so
+   the chart behind the card can never bleed through mid-change. The softness
+   comes from the contents fading up on top of that opaque surface, staggered
+   so the heading leads and the body follows. */
+.slide.on .panel{ animation:panelIn .46s cubic-bezier(.22,.92,.28,1) both; }
+@keyframes panelIn{
+  from{ transform:translateY(16px) scale(.988); }
+  to{ transform:none; }
+}
+.slide.on .panel > *{ animation:contentIn .5s cubic-bezier(.22,.92,.28,1) both; }
+@keyframes contentIn{
+  from{ opacity:0; transform:translateY(8px); }
+  to{ opacity:1; transform:none; }
+}
+.slide.on .panel > *:nth-child(1){ animation-delay:.03s; }
+.slide.on .panel > *:nth-child(2){ animation-delay:.08s; }
+.slide.on .panel > *:nth-child(3){ animation-delay:.13s; }
+.slide.on .panel > *:nth-child(4){ animation-delay:.17s; }
+.slide.on .panel > *:nth-child(n+5){ animation-delay:.2s; }
+@media (prefers-reduced-motion:reduce){
+  .slide.on .panel, .slide.on .panel > *{ animation:none; }
+}
 @media (min-width:760px){ .slide{ padding:26px 20px 30px; } }
 .inner{margin:auto; width:100%; max-width:1120px;}
 
@@ -1735,7 +1751,18 @@ function drawCard(c,W,H,opt){
   c.setTransform(1,0,0,1,0,0);
   c.clearRect(0,0,W,H);
   c.fillStyle=P.hex; c.fillRect(0,0,W,H);
-  if(opt.chart!==false) drawChart(c,0,0,W,H,opt.seed||7);
+  if(opt.chart!==false){
+    if(opt.inset){
+      /* A screenshot placed with room around it, the way Fit leaves it — which
+         is the only way a preview can show the ground colour at all. */
+      var ix=W*0.075, iy=H*0.155, iw=W*0.85, ih=H*0.55;
+      c.save(); rr(c,ix,iy,iw,ih,16); c.clip();
+      drawChart(c,ix,iy,iw,ih,opt.seed||7,46);
+      c.restore();
+    }else{
+      drawChart(c,0,0,W,H,opt.seed||7);
+    }
+  }
 
   /* session tabs — active pinned to centre */
   var tabFont="600 "+Math.round(29*u)+"px "+SANS;
@@ -2036,31 +2063,9 @@ function paintMarks(){
   c.fillStyle=d?"rgba(255,255,255,0.03)":"#f5f5f5";
   c.fillRect(0,0,W,H);
 
-  /* A band of chart running straight through both marks. It has to be solid
-     enough that "shows through" is unambiguous at a glance. */
-  var bandT=112, bandB=190;
-  c.save();
-  c.fillStyle=d?"rgba(38,166,154,0.30)":"rgba(38,166,154,0.22)";
-  c.fillRect(0,bandT,W,bandB-bandT);
-
-  var n=40, data=series(n,5), i, hi=-1e9, lo=1e9;
-  for(i=0;i<n;i++){ if(data[i].h>hi)hi=data[i].h; if(data[i].l<lo)lo=data[i].l; }
-  var top=96, ch=112, step=W/n, bw=step*0.58;
-  function py(v){ return top+ch-((v-lo)/(hi-lo))*ch; }
-  c.globalAlpha=d?0.62:0.72;
-  for(i=0;i<n;i++){
-    var dd=data[i], cx=step*(i+0.5), up=dd.c>=dd.o;
-    c.strokeStyle=up?"#26a69a":"#ef5350"; c.fillStyle=up?"#26a69a":"#ef5350";
-    c.lineWidth=Math.max(1.4,bw*0.18);
-    c.beginPath(); c.moveTo(cx,py(dd.h)); c.lineTo(cx,py(dd.l)); c.stroke();
-    var t=py(Math.max(dd.o,dd.c)), b=py(Math.min(dd.o,dd.c));
-    c.fillRect(cx-bw/2,t,bw,Math.max(9,b-t));
-  }
-  c.restore();
-
   var ink=d?"#f1eee5":"#1c1c1c";
-  drawXMark(c,238,150,132,ink);
-  drawInstaMark(c,642,150,132,ink);
+  drawXMark(c,238,142,132,ink);
+  drawInstaMark(c,642,142,132,ink);
 
   c.fillStyle=d?"rgba(241,238,229,0.65)":"rgba(27,26,22,0.6)";
   c.font="600 12px "+MONO; c.textAlign="center"; c.textBaseline="alphabetic";
@@ -2145,7 +2150,8 @@ function buildGrounds(){
 
     var off=document.createElement("canvas"); off.width=1920; off.height=1080;
     drawCard(off.getContext("2d"),1920,1080,{
-      bg:o.hex, tint:50, symbol:"NQ", session:"New York", tf:"H4", seed:19, u:1.3
+      bg:o.hex, tint:50, symbol:"NQ", session:"New York", tf:"H4", seed:19, u:1.3,
+      inset:true
     });
     var c=cv.getContext("2d");
     c.imageSmoothingEnabled=true; c.imageSmoothingQuality="high";
