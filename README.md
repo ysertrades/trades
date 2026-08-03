@@ -1,9 +1,11 @@
-# Trade card editor
+# Trades card editor
 
 Turns a raw chart screenshot into a clean 1920 × 1080 trade card: session tabs,
 symbol badge, timeframe pill and wordmark over a `#f5f5f5` background.
 
-Single HTML file. No build step, no dependencies, no server. Open it and it works.
+The editor is a single HTML file. No build step, no dependencies, no server.
+Open it and it works. `guide.html` is an optional illustrated guide that ships
+alongside it — the **Guide** button in the header opens it.
 
 ## Use it
 
@@ -12,7 +14,8 @@ Single HTML file. No build step, no dependencies, no server. Open it and it work
    (hold `Shift` for 10 px). Use **Trim edges** to shave exact source pixels off
    a side, which is how you cut a half-drawn candle without shifting the frame.
 3. **Set the labels** — symbol, session, timeframe.
-4. **Export PNG** — 1920 × 1080 by default, up to 7680 × 4320.
+4. **Sign it** — pick the X or Instagram mark and type your own username.
+5. **Export PNG** — 1920 × 1080 composition, output up to 7680 × 4320.
 
 The preview canvas *is* the export canvas, so the downloaded file is always
 pixel-identical to what you see. There is no second render path that can drift.
@@ -24,6 +27,7 @@ pixel-identical to what you see. There is no second render path that can drift.
 | Symbol | NQ, ES, YM, GC, SI (futures) and EURUSD, GBPUSD (forex). GC carries the gold mark, SI the silver one |
 | Session | London, New York, Asia. The active session is always centred; the others rotate around it and fade outward. A slider sets how far that fade goes, 0 leaving them flat grey |
 | Timeframe | Presets from M1 to W1, or type your own label |
+| Wordmark | Logo is X (filled) or Instagram (outlined, so the chart shows through it). Username is free text up to 20 characters, case preserved — leave it empty and the logo centres on its own. Toggle the whole thing off with **Show on card** |
 | Zoom | Slider plus ±0.1% and ±0.5% steps for fine framing |
 | Position | 1 px and 10 px nudges, or recentre |
 | Trim edges | Per-side crop in source pixels |
@@ -38,7 +42,7 @@ pixel-identical to what you see. There is no second render path that can drift.
 ```bash
 git init
 git add .
-git commit -m "Trade card editor"
+git commit -m "Trades card editor"
 git branch -M main
 git remote add origin https://github.com/YOUR-USERNAME/YOUR-REPO.git
 git push -u origin main
@@ -87,6 +91,10 @@ Everything lives in the `<script>` block of `index.html`.
 - **Add a symbol** — append to `SYMBOLS`, then add a matching branch in
   `drawSymbolIcon()`. Badges are drawn with `numberBadge()`, `metalBadge()` or
   the flag helpers, so a new one is usually a single line.
+- **Add another logo** — the X and Instagram marks are panel controls, so
+  switching between them needs no source edit. For a third mark, append to
+  `LOGOS` and add a branch to `drawMark()`. Draw it inside a 24 × 24 space the
+  way `drawXMark()` and `drawInstaMark()` do and it scales with everything else.
 - **Change the background** — the `BG` constant.
 - **Change the export size** — the `W` and `H` constants, and the `width` and
   `height` attributes on the `<canvas>` element.
