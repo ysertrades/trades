@@ -673,16 +673,21 @@ git push -u origin main</code></pre>
               to give the canvas more room, and reports its height to the parent for hosts
               that size their frames dynamically. There is nothing to configure.</p>
 
-            <h3 class="h3">Anywhere else</h3>
-            <p>Upload <code>index.html</code> to Netlify, Vercel, Cloudflare Pages, an S3
-              bucket, or your own box. There are no server-side requirements at all.</p>
             <div class="note">
-              <span class="note-lab">Two files, one deploy</span>
-              <p>Keep <code>guide.html</code> beside <code>index.html</code> and the
-                <span class="k">Guide</span> button in the editor's header resolves on its
-                own — no absolute URL to update per environment. The editor still runs
-                perfectly well without it; the button simply 404s.</p>
+              <span class="note-lab">The guide opens in place</span>
+              <p>This guide is a panel inside the editor, not a new tab — a tab is either
+                blocked by the host's frame sandbox or throws you out of the app view.
+                <kbd>Esc</kbd> or <span class="k">Close</span> returns you to the canvas
+                as you left it. Ship <code>guide.html</code> next to
+                <code>index.html</code> and the button resolves on its own; leave it out
+                and the button says so rather than showing a 404.</p>
             </div>
+
+            <h3 class="h3">Anywhere else</h3>
+            <p>Upload both files to Netlify, Vercel, Cloudflare Pages, an S3 bucket, or
+              your own box. There are no server-side requirements at all, and the
+              <span class="k">Guide</span> button uses a relative link, so nothing needs
+              reconfiguring per environment.</p>
           </div>
         </div>
       </article>
@@ -2059,10 +2064,20 @@ function repaintAll(){
   paintTabs();
   paintMarks();
 }
-/* Show the back link only where index.html is actually a sibling — a file
-   deploy or a static host. A standalone copy has nothing to go back to. */
-if(/(^|\/)guide\.html?$/i.test(location.pathname) || location.protocol==="file:"){
+/* Inside the editor's guide panel there is already a Close button, and
+   following a link would nest the editor inside its own overlay — so the back
+   link is for the standalone page only. */
+var inFrame=(function(){ try{ return window.self!==window.top; }catch(e){ return true; } })();
+if(!inFrame && (/(^|\/)guide\.html?$/i.test(location.pathname) || location.protocol==="file:")){
   document.getElementById("home").hidden=false;
+}
+/* Esc pressed in here cannot reach the editor's document, so hand it back. */
+if(inFrame){
+  window.addEventListener("keydown",function(e){
+    if(e.key==="Escape"){
+      try{ parent.postMessage({type:"guide:close"},"*"); }catch(err){}
+    }
+  });
 }
 
 buildHeroChips();

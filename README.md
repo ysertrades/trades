@@ -4,8 +4,9 @@ Turns a raw chart screenshot into a clean 1920 × 1080 trade card: session tabs,
 symbol badge, timeframe pill and wordmark over a `#f5f5f5` background.
 
 The editor is a single HTML file. No build step, no dependencies, no server.
-Open it and it works. `guide.html` is an optional illustrated guide that ships
-alongside it — the **Guide** button in the header opens it.
+Open it and it works. `guide.html` is an illustrated guide that ships alongside
+it; the **Guide** button in the header opens it as a panel inside the editor,
+so it works the same embedded in an iframe as it does standalone.
 
 ## Use it
 
@@ -75,6 +76,14 @@ trapped inside the frame.
 When it detects that it is embedded it also slims its own header to give the
 canvas more room, and posts its height to the parent frame for hosts that size
 their iframes dynamically.
+
+**The guide opens in place.** The **Guide** button opens the guide as a panel
+inside the editor rather than a new tab, because a tab is either blocked by the
+host's frame sandbox or throws the reader out of the app view. `Esc` or
+**Close** returns to the canvas with the framing and labels untouched, and
+**Open in tab** is there for anyone who wants a window of their own. Upload
+`guide.html` alongside `index.html`; if it is missing the button says so rather
+than showing a 404.
 
 There is nothing to configure and no server component. It stores nothing, sets
 no cookies and sends no data anywhere; all rendering happens in the browser.
