@@ -1123,6 +1123,18 @@ kbd{
 input[type="range"]{
   flex:1; min-width:0; height:22px; -webkit-appearance:none; appearance:none;
   background:none; cursor:pointer;
+  /* horizontal belongs to the slider; vertical still scrolls the slide */
+  touch-action:pan-y;
+}
+/* A 17px handle is a mouse target, not a finger one. On touch the whole
+   control grows a proper grab area and the handle comes with it. */
+@media (pointer:coarse){
+  input[type="range"]{height:42px;}
+  input[type="range"]::-webkit-slider-runnable-track{height:7px;}
+  input[type="range"]::-moz-range-track{height:7px;}
+  input[type="range"]::-webkit-slider-thumb{width:26px; height:26px; margin-top:-10px;}
+  input[type="range"]::-moz-range-thumb{width:24px; height:24px;}
+  .slid{gap:14px;}
 }
 input[type="range"]::-webkit-slider-runnable-track{height:5px; border-radius:3px; background:var(--hair);}
 input[type="range"]::-moz-range-track{height:5px; border-radius:3px; background:var(--hair);}
@@ -2015,12 +2027,18 @@ window.addEventListener("keydown",function(e){
   else if(e.key==="End"){ go(slides.length-1); e.preventDefault(); }
 });
 
-/* swipe */
+/* Swipe. Listening on the document means a drag anywhere counts, so dragging
+   the fade slider used to read as a swipe and turn the page instead of moving
+   the handle. A gesture that starts on a control belongs to that control. */
+var SWIPE_IGNORE="input,button,a,select,textarea,label,.nav,[role=tab]";
 var sx=0, sy=0, tracking=false;
 document.addEventListener("pointerdown",function(e){
   if(e.pointerType==="mouse") return;
+  var t=e.target;
+  if(t && t.closest && t.closest(SWIPE_IGNORE)){ tracking=false; return; }
   sx=e.clientX; sy=e.clientY; tracking=true;
 });
+document.addEventListener("pointercancel",function(){ tracking=false; });
 document.addEventListener("pointerup",function(e){
   if(!tracking) return;
   tracking=false;
