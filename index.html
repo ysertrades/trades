@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Trade card editor</title>
+<title>Trades card editor</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -23,6 +23,12 @@ h1{margin:0;font-size:17px;font-weight:600;letter-spacing:-.01em}
 .btn.go{background:#171717;border-color:#171717;color:#fff}
 .btn.go:active{background:#000}
 .btn:disabled{opacity:.35;cursor:default}
+/* Guide sits apart from the two working buttons: tinted, never black, so it
+   reads as a way out of the tool rather than a step inside it. */
+.btn.guide{border-color:#c6e2f8;background:#f4faff;color:#0e6bb8;text-decoration:none}
+.btn.guide:active{background:#e6f3fe}
+.guide-ico{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;
+  border-radius:7px;background:#1f9bf0;color:#fff;margin-left:-4px;flex:none}
 .grid{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}
 .stage{position:relative;width:100%;margin:0 auto;border-radius:12px;overflow:hidden;background:#fff;border:1px solid #e4e4e4}
 canvas{display:block;width:100%;height:auto;touch-action:none}
@@ -86,10 +92,16 @@ body.embedded .head{margin-bottom:10px}
 <div class="wrap">
   <header class="head">
     <div>
-      <h1>Trade card editor</h1>
+      <h1>Trades card editor</h1>
       <p class="sub">Place a chart screenshot, export at 1920 × 1080.</p>
     </div>
     <div class="acts">
+      <a class="btn guide" id="guideBtn" href="guide.html" target="_blank" rel="noopener">
+        <span class="guide-ico" aria-hidden="true">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        </span>
+        Guide
+      </a>
       <button type="button" class="btn" id="loadBtn">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         Load screenshot
@@ -183,7 +195,16 @@ body.embedded .head{margin-bottom:10px}
         <div class="sech" style="margin-top:12px"><h3 class="lab">Overlay tone</h3><span class="hint" id="tintHint">50%</span></div>
         <div class="slider" id="tintSlider"><div class="track"></div><div class="fill"></div><div class="thumb"></div></div>
         <p class="note">Centre blends the panels into the background. Right lifts them toward white, left sinks them into a soft grey so they stay visible.</p>
-        <label class="check"><input type="checkbox" id="markChk" checked> Show X / YSERTRADES</label>
+      </section>
+
+      <section class="sec">
+        <div class="sech"><h3 class="lab">Wordmark</h3></div>
+        <p class="cap">Logo</p>
+        <div class="row" id="logoRow"></div>
+        <p class="cap" style="margin-top:10px">Username</p>
+        <input class="field" id="handleInput" placeholder="Leave empty for logo only" maxlength="20" autocomplete="off" spellcheck="false">
+        <label class="check"><input type="checkbox" id="markChk" checked> Show on card</label>
+        <p class="note">The Instagram mark is drawn as an outline, so the chart shows through it.</p>
       </section>
 
       <section class="sec">
@@ -220,6 +241,10 @@ const SYMBOLS = [
 ];
 const SESSIONS = ["London","New York","Asia"];
 const TIMEFRAMES = ["M1","M3","M5","M15","M30","H1","H4","H6","D1","W1"];
+const LOGOS = [
+  { id:"x", label:"X" },
+  { id:"instagram", label:"Instagram" }
+];
 
 /* ---------------------------- canvas helpers ---------------------------- */
 function rr(ctx,x,y,w,h,r){
@@ -336,6 +361,25 @@ function drawXMark(ctx,cx,cy,size,color){
   ctx.fill(new Path2D(X_PATH));
   ctx.restore();
 }
+/* Instagram, drawn as outlines rather than a solid glyph, so the chart shows
+   through the squircle and the lens. Strokes are set inside the scaled space,
+   so they thicken with the mark and rasterise natively at any export size. */
+function drawInstaMark(ctx,cx,cy,size,color){
+  const s=size*0.94;          // a closed outline reads larger than the solid X
+  ctx.save();
+  ctx.translate(cx-s/2,cy-s/2);
+  ctx.scale(s/24,s/24);
+  ctx.strokeStyle=color; ctx.fillStyle=color;
+  ctx.lineWidth=2.1; ctx.lineJoin="round"; ctx.lineCap="round";
+  rr(ctx,2,2,20,20,5.6); ctx.stroke();               // body
+  ctx.beginPath(); ctx.arc(12,12,4.3,0,Math.PI*2); ctx.stroke();   // lens
+  ctx.beginPath(); ctx.arc(17.4,6.6,1.25,0,Math.PI*2); ctx.fill(); // flash dot
+  ctx.restore();
+}
+function drawMark(ctx,id,cx,cy,size,color){
+  if(id==="instagram") return drawInstaMark(ctx,cx,cy,size,color);
+  return drawXMark(ctx,cx,cy,size,color);
+}
 function drawSymbolIcon(ctx,id,cx,cy,r){
   if(id==="NQ") return numberBadge(ctx,cx,cy,r,"#1f9bf0","100");
   if(id==="ES") return numberBadge(ctx,cx,cy,r,"#e03131","500");
@@ -398,7 +442,8 @@ const S = {
   symbol:"NQ", session:"New York", timeframe:"H4",
   zoom:1, offX:0, offY:0,
   crop:{l:0,r:0,t:0,b:0},
-  ui:1, tint:50, fade:100, showMark:true, fitMode:"fit"
+  ui:1, tint:50, fade:100, showMark:true, fitMode:"fit",
+  markLogo:"x", handle:"YSERTRADES"
 };
 
 const cv = document.getElementById("cv");
@@ -509,17 +554,20 @@ function drawTo(g2,k,useFull){
   g2.fillText(sym.label,textX,cy+1*u);
   drawSymbolIcon(g2,sym.id,iconCX,cy,iconR);
 
-  /* wordmark, centred */
+  /* wordmark, centred. With no username the logo centres on its own rather
+     than leaving a dangling slash. */
   if(S.showMark){
-    const markSize=27*u, markText="/ YSERTRADES";
+    const markSize=27*u, markText=S.handle?("/ "+S.handle):"";
     g2.save();
     if("letterSpacing" in g2) g2.letterSpacing=(1.2*u)+"px";
     g2.font="400 "+Math.round(26*u)+"px "+POPPINS;
-    const mtw=g2.measureText(markText).width, mgap=14*u;
+    const mtw=markText?g2.measureText(markText).width:0, mgap=markText?14*u:0;
     const gx=W/2-(markSize+mgap+mtw)/2;
-    drawXMark(g2,gx+markSize/2,cy,markSize,"#1c1c1c");
-    g2.fillStyle="#1c1c1c"; g2.textAlign="left"; g2.textBaseline="middle";
-    g2.fillText(markText,gx+markSize+mgap,cy+1*u);
+    drawMark(g2,S.markLogo,gx+markSize/2,cy,markSize,"#1c1c1c");
+    if(markText){
+      g2.fillStyle="#1c1c1c"; g2.textAlign="left"; g2.textBaseline="middle";
+      g2.fillText(markText,gx+markSize+mgap,cy+1*u);
+    }
     if("letterSpacing" in g2) g2.letterSpacing="0px";
     g2.restore();
   }
@@ -558,8 +606,13 @@ function chip(label,on,fn){
   b.onclick=fn; return b;
 }
 function buildChips(){
-  const fut=$("futRow"), fx=$("fxRow"), se=$("sessRow"), tf=$("tfRow");
-  fut.innerHTML=fx.innerHTML=se.innerHTML=tf.innerHTML="";
+  const fut=$("futRow"), fx=$("fxRow"), se=$("sessRow"), tf=$("tfRow"), lg=$("logoRow");
+  fut.innerHTML=fx.innerHTML=se.innerHTML=tf.innerHTML=lg.innerHTML="";
+  LOGOS.forEach(function(o){
+    lg.appendChild(chip(o.label,S.markLogo===o.id,function(){
+      S.markLogo=o.id; buildChips(); draw();
+    }));
+  });
   SYMBOLS.forEach(function(s){
     const b=chip(s.label,S.symbol===s.id,function(){S.symbol=s.id;buildChips();draw();});
     (s.group==="Futures"?fut:fx).appendChild(b);
@@ -1012,6 +1065,10 @@ $("tfInput").oninput=function(){
   buildChips(); draw();
 };
 $("markChk").onchange=function(){ S.showMark=$("markChk").checked; draw(); };
+$("handleInput").oninput=function(){
+  S.handle=$("handleInput").value.slice(0,20);
+  draw();
+};
 
 const zoomSlider=makeSlider($("zoomSlider"),{
   min:20,max:400,step:0.1,
@@ -1048,6 +1105,7 @@ buildChips();
 buildExport();
 buildEdges();
 $("tfInput").value=S.timeframe;
+$("handleInput").value=S.handle;
 refreshHints();
 draw();
 
