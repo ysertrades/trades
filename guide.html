@@ -154,8 +154,9 @@
             <div class="note warn">
               <span class="note-lab">HEIC will not load</span>
               <p>Browsers cannot decode Apple's HEIC format. On iPhone, either take a
-                screenshot (always PNG) or set <span class="k">Settings → Camera → Formats →
-                Most Compatible</span>.</p>
+                screenshot — those are always PNG — or switch the camera over in
+                <span class="k">Settings</span> → <span class="k">Camera</span> →
+                <span class="k">Formats</span> → <span class="k">Most Compatible</span>.</p>
             </div>
           </div>
         </div>
@@ -864,8 +865,12 @@ git push -u origin main</code></pre>
 :root{
   --ground:#eeece6;
   --ground-2:#e3e0d7;
-  --glass:rgba(253,252,250,.66);
-  --glass-2:rgba(253,252,250,.45);
+  /* The panel is opaque. It used to be 66% with a backdrop-filter behind it,
+     which put the candle field underneath the running text and forced a blur
+     recomputation on every frame of a slide change. The chart now frames the
+     card instead of showing through it. */
+  --glass:#fbfaf7;
+  --glass-2:rgba(30,28,22,.045);
   --hair:rgba(30,28,22,.10);
   --hair-2:rgba(30,28,22,.055);
   --ink:#1b1a16;
@@ -889,8 +894,8 @@ git push -u origin main</code></pre>
   :root{
     --ground:#141310;
     --ground-2:#1d1b16;
-    --glass:rgba(255,255,255,.055);
-    --glass-2:rgba(255,255,255,.032);
+    --glass:#1c1a15;
+    --glass-2:rgba(255,255,255,.055);
     --hair:rgba(255,255,255,.115);
     --hair-2:rgba(255,255,255,.062);
     --ink:#f1eee5;
@@ -908,7 +913,7 @@ git push -u origin main</code></pre>
 }
 :root[data-theme="dark"]{
   --ground:#141310; --ground-2:#1d1b16;
-  --glass:rgba(255,255,255,.055); --glass-2:rgba(255,255,255,.032);
+  --glass:#1c1a15; --glass-2:rgba(255,255,255,.055);
   --hair:rgba(255,255,255,.115); --hair-2:rgba(255,255,255,.062);
   --ink:#f1eee5; --ink-2:#bbb6a7; --ink-3:#8a8577;
   --tab-bg:#eae7dd; --tab-fg:#1b1a16;
@@ -919,7 +924,7 @@ git push -u origin main</code></pre>
 }
 :root[data-theme="light"]{
   --ground:#eeece6; --ground-2:#e3e0d7;
-  --glass:rgba(253,252,250,.66); --glass-2:rgba(253,252,250,.45);
+  --glass:#fbfaf7; --glass-2:rgba(30,28,22,.045);
   --hair:rgba(30,28,22,.10); --hair-2:rgba(30,28,22,.055);
   --ink:#1b1a16; --ink-2:#514e45; --ink-3:#8a8578;
   --tab-bg:#46443f; --tab-fg:#ffffff;
@@ -930,27 +935,35 @@ git push -u origin main</code></pre>
 }
 
 /* ═══════════════════════ FRAME ═══════════════════════ */
+/* Column layout: the deck takes the space that is left and the nav sits below
+   it in flow, so the pill can never come to rest on top of the reading text
+   the way a fixed bar does. */
 body{
   margin:0; background:var(--ground); color:var(--ink);
   font-family:var(--sans); font-size:15px; line-height:1.62;
   -webkit-font-smoothing:antialiased; overflow:hidden;
+  height:100vh; height:100dvh;
+  display:flex; flex-direction:column;
 }
 #bg{position:fixed; inset:0; width:100%; height:100%; z-index:0; display:block;}
 
-.deck{position:fixed; inset:0; z-index:1;}
+.deck{position:relative; flex:1 1 auto; min-height:0; z-index:1;}
 
 .slide{
   position:absolute; inset:0;
   display:flex; overflow-y:auto; overflow-x:hidden;
-  padding:26px 20px 92px;
-  opacity:0; visibility:hidden; pointer-events:none;
-  transform:translateY(14px) scale(.994);
-  transition:opacity .42s ease, transform .42s cubic-bezier(.22,.8,.3,1), visibility 0s .42s;
+  padding:20px 16px 24px;
+  -webkit-overflow-scrolling:touch;
+  visibility:hidden; pointer-events:none;
 }
-.slide.on{
-  opacity:1; visibility:visible; pointer-events:auto;
-  transform:none; transition-delay:0s;
-}
+.slide.on{ visibility:visible; pointer-events:auto; }
+/* Only the panel moves, and only by transform. Nothing animates opacity, so
+   the card never turns translucent mid-change and the chart behind it stays
+   behind it. */
+.slide.on .panel{ animation:panelIn .3s cubic-bezier(.22,.8,.3,1) both; }
+@keyframes panelIn{ from{ transform:translateY(12px); } to{ transform:none; } }
+@media (prefers-reduced-motion:reduce){ .slide.on .panel{ animation:none; } }
+@media (min-width:760px){ .slide{ padding:26px 20px 30px; } }
 .inner{margin:auto; width:100%; max-width:1120px;}
 
 /* ═══════════════════════ GLASS ═══════════════════════
@@ -959,12 +972,10 @@ body{
 .panel{
   background:var(--glass);
   border:1.4px solid var(--hair-2);
-  border-radius:22px;
+  border-radius:20px;
   box-shadow:var(--shade);
-  backdrop-filter:blur(22px) saturate(1.5);
-  -webkit-backdrop-filter:blur(22px) saturate(1.5);
-  padding:clamp(24px,3.4vw,46px);
-  display:flex; flex-direction:column; gap:clamp(18px,2.1vw,26px);
+  padding:clamp(20px,3.4vw,46px);
+  display:flex; flex-direction:column; gap:clamp(16px,2.1vw,26px);
 }
 
 /* ═══════════════════════ TYPE ═══════════════════════ */
@@ -1026,11 +1037,15 @@ pre{
 }
 pre code{background:none; border:0; padding:0; font-size:12.5px; line-height:1.75; color:var(--ink-2);}
 
+/* Inline, not inline-block, with the decoration cloned onto each line box:
+   a long value like a Settings path wraps inside the panel and keeps its
+   border on both halves instead of running off the edge. */
 .k{
-  display:inline-block; font-family:var(--mono); font-size:11.5px;
+  display:inline; font-family:var(--mono); font-size:11.5px;
   line-height:1.5; padding:1px 7px; border-radius:6px;
   border:1px solid var(--hair); color:var(--ink);
-  background:var(--glass-2); white-space:nowrap;
+  background:var(--glass-2);
+  -webkit-box-decoration-break:clone; box-decoration-break:clone;
 }
 kbd{
   display:inline-block; font-family:var(--mono); font-size:11px; font-weight:600;
@@ -1259,12 +1274,12 @@ input[type="range"]::-moz-range-thumb{
 
 /* ═══════════════════════ NAV ═══════════════════════ */
 .nav{
-  position:fixed; z-index:5; left:50%; bottom:16px; transform:translateX(-50%);
+  position:relative; z-index:5; flex:none;
+  align-self:center; margin:0 auto 14px;
   display:flex; align-items:center; gap:5px;
   padding:6px 8px; border-radius:999px;
   background:var(--glass); border:1.4px solid var(--hair-2);
-  box-shadow:var(--shade); backdrop-filter:blur(22px) saturate(1.5);
-  -webkit-backdrop-filter:blur(22px) saturate(1.5);
+  box-shadow:var(--shade);
   max-width:calc(100vw - 24px);
 }
 /* Only meaningful when the guide is deployed beside index.html, so JS
@@ -1303,6 +1318,34 @@ input[type="range"]::-moz-range-thumb{
 }
 .count b{color:var(--ink); font-weight:600;}
 @media (max-width:520px){ .dots{display:none;} }
+
+/* ═══════════════════ PHONE DENSITY ═══════════════════
+   Same content, tighter rhythm: a slide that took three screens on a phone
+   now takes closer to one and a half. */
+@media (max-width:640px){
+  body{font-size:14.5px; line-height:1.58;}
+  h1{font-size:clamp(30px,8.4vw,40px); letter-spacing:-.03em;}
+  h2{font-size:clamp(23px,6.4vw,30px); letter-spacing:-.026em;}
+  .lead{font-size:15.5px; line-height:1.5;}
+  .sub{font-size:12px;}
+  .panel{gap:15px; border-radius:18px;}
+  .two{gap:18px;}
+  .col{gap:13px;}
+  .head{gap:7px;}
+  .spec .row{padding:11px 0;}
+  .note{padding:11px 13px; border-radius:0 10px 10px 0;}
+  .note p{font-size:13.2px;}
+  .fine{font-size:12.8px;}
+  .keys{font-size:13px;}
+  .keys td{padding:9px 0;}
+  .keys td:first-child{width:auto; white-space:normal;}
+  .pipe li{padding-bottom:13px;}
+  .recipe li{padding:12px 0 12px 34px;}
+  .facts{gap:11px; padding-top:14px;}
+  .fact b{font-size:22px;}
+  .cardfig figcaption{gap:10px 18px;}
+  pre code{font-size:11.5px;}
+}
 
 :focus-visible{outline:2px solid var(--signal-fill); outline-offset:3px; border-radius:5px;}
 
