@@ -292,9 +292,12 @@
             <div class="spec tight">
               <div class="row">
                 <span class="lab">Overlay size</span>
-                <p>Scales every piece of furniture together, 80–120%, from
-                  <span class="k">100%</span>. Tabs, badge, capsule, pill and wordmark keep
-                  their proportions to each other — one number, no drift.</p>
+                <p>Scales every piece of furniture together, 55–130%, from
+                  <span class="k">100%</span>. Tabs, badge, capsule, pill, corner badge and
+                  wordmark keep their proportions to each other — one number, no drift.</p>
+                <p class="fine">The bottom of that range is genuinely small. It exists because
+                  a busy chart wants the overlay to get out of the way, and a slider that only
+                  ever trims a tenth cannot do that.</p>
               </div>
             </div>
           </div>
@@ -373,12 +376,24 @@
                 <span class="lab">Show on card</span>
                 <p>Hides the wordmark. The rail, badge and pill are untouched.</p>
               </div>
+              <div class="row">
+                <span class="lab">Corner badge</span>
+                <p>Your own image at the right end of the rail, opposite the symbol and
+                  exactly its size. Fitted inside the square rather than cropped to fill it,
+                  so a wide mark stays wide. Transparent PNG sits best.</p>
+              </div>
             </div>
 
             <div class="note">
               <span class="note-lab">Good to know</span>
               <p>Clear the username entirely and the logo centres on its own, rather than
                 leaving a dangling slash. A bare mark is often the cleaner signature.</p>
+            </div>
+            <div class="note">
+              <span class="note-lab">The badge is kept at full size</span>
+              <p>The uploaded image is held at its original resolution and redrawn from that
+                at every export, the same way your screenshot is. Upload it large — a 512px
+                mark carries an 8K card, a 64px favicon will not.</p>
             </div>
           </div>
 
@@ -409,10 +424,10 @@
         </header>
 
         <div class="sizes">
-          <div class="size"><b>1080p</b><span>1920 × 1080</span><small>Rendered at 2× and resolved down</small></div>
-          <div class="size on"><b>4K</b><span>3840 × 2160</span><small>Default</small></div>
-          <div class="size"><b>6K</b><span>5760 × 3240</span><small>Native redraw</small></div>
-          <div class="size"><b>8K</b><span>7680 × 4320</span><small>Native redraw</small></div>
+          <div class="size"><b>1080p</b><span>1920 × 1080</span><small>Drawn at 3840, resolved down</small></div>
+          <div class="size on"><b>4K</b><span>3840 × 2160</span><small>Drawn at 7680 · default</small></div>
+          <div class="size"><b>6K</b><span>5760 × 3240</span><small>Drawn at 11520</small></div>
+          <div class="size"><b>8K</b><span>7680 × 4320</span><small>Drawn at 15360</small></div>
         </div>
 
         <div class="two">
@@ -421,9 +436,14 @@
             <p>Every label, badge and panel is drawn again at the output size rather than
               stretched from the preview, and the image pixels come from your original
               screenshot, not the editing copy.</p>
-            <p>Each size is also rendered larger than it is saved and resolved down, which
-              smooths the curve of a badge and the edge of the type — a full double pass
-              at 1080p and 4K, a partial one at 6K.</p>
+            <p>Each size is also rendered at twice its own width and resolved back down,
+              which is what actually smooths the curve of a badge and the edge of the type.
+              <b>Every</b> size gets that full double pass — picking the biggest one no
+              longer trades edge quality for pixels.</p>
+            <p class="fine">If the device refuses a canvas that large the export steps down
+              its own quality — one and a half times, then a plain native redraw — rather
+              than giving up. You get the best pass the phone in your hand can actually
+              hold, and the file either way.</p>
 
             <div class="note warn">
               <span class="note-lab">Your screenshot is the ceiling</span>
