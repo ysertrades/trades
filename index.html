@@ -747,6 +747,26 @@ function drawTo(g2,k,useFull){
 
   const u=S.ui;
 
+  /* ─────────────────────────── TWO SCALES ────────────────────────────
+     One number ran everything, and it made the bottom of the range useless:
+     at 55% the session labels came out 13px tall on a 1080px card, which on a
+     phone is four pixels of grey mush. "Smaller" turned into "gone" long
+     before the slider ran out.
+
+     So the slider drives two curves, not one. FURNITURE moves at the full
+     rate — that is what you are asking for when you drag it. TYPE moves at
+     60% of that rate, so it thins out without disappearing: 73% of its size
+     when the boxes are at 55%, 118% when they are at 130%.
+
+     Boxes then take whichever is larger, their own scaled size or what the
+     type inside them needs. At 100% the two agree to the pixel by
+     construction — every coefficient below is the 100% value divided by its
+     font size — so nothing about a card exported at 100% changes. Below it,
+     the pill stops crushing its label and starts hugging it, which is what a
+     small label should look like anyway. */
+  const ut=0.4+0.6*u;
+  const fit=(scaled,fromType)=>Math.max(scaled,fromType);
+
   /* session tabs — active one pinned to the centre.
 
      THE ACTIVE PILL IS A ROUNDED RECTANGLE, NOT A CAPSULE. It used to be 58
@@ -756,9 +776,12 @@ function drawTo(g2,k,useFull){
      the chart rather than a button floating over it, and it stops competing
      with the timeframe pill at the bottom, which IS a capsule and is meant to
      be the round one. */
-  const tabFont="600 "+Math.round(24*u)+"px "+POPPINS;
+  const tabPx=Math.round(24*ut);
+  const tabFont="600 "+tabPx+"px "+POPPINS;
   g2.font=tabFont;
-  const tabH=36*u, tabY=46*u, padX=17*u, gap=19*u, tabR=10*u;
+  const tabH=fit(36*u,tabPx*1.5), tabY=46*u,
+        padX=fit(17*u,tabPx*0.708), gap=fit(19*u,tabPx*0.792),
+        tabR=tabH*0.278;
   const ai=Math.max(0,SESSIONS.indexOf(S.session));
   const ordered=[SESSIONS[(ai+2)%3],SESSIONS[ai],SESSIONS[(ai+1)%3]];
   const tabs=ordered.map(function(label){
@@ -802,20 +825,36 @@ function drawTo(g2,k,useFull){
     g2.fillText(t.label,cx2,tabY+tabH/2+1*u);
   });
 
-  /* bottom rail sized from the badge */
-  const iconR=32*u, railPad=15*u;
+  /* ─────────────────────────── THE BOTTOM RAIL ───────────────────────────
+     THIS IS WHERE "SMALLER" STOPPED MEANING SMALLER. The rail's height was on
+     the scale and its WIDTH WAS NOT — it was hard-wired to W-32, pinned 16px
+     off the bottom, at every setting. Pull the slider down and the furniture
+     inside got tiny while the bar it sat in still ran the full 1888px, so the
+     overlay staked out exactly as much card as before and just looked
+     starved: a hairline stripe from edge to edge with a speck at each end.
+     Nothing was synced to anything.
+
+     Both dimensions are on the scale now. The bar is (W-32)·u wide and
+     centred, and the gap under it is 16·u, so a 55% overlay covers 55% of the
+     width it covered at 100% — the number on the slider is the number on the
+     card. At 100% that is W-32 at x=16 with a 16px gap, exactly as before.
+     Above 100% it can still grow, but only until it is 8px off the edge; past
+     that there is no card left to take. */
+  const symPx=Math.round(28*ut);
+  const iconR=fit(32*u,symPx*1.143), railPad=iconR*0.469;
   const barH=iconR*2+railPad*2;
-  const barY=H-16-barH, barX=16;
-  glass(g2,barX,barY,W-32,barH,barH/2,{fill:glassFill(1),stroke:P.strokeSoft,shadowColor:P.shadow});
+  const barW=Math.min(W-16,(W-32)*u), barX=(W-barW)/2;
+  const barY=H-16*u-barH;
+  glass(g2,barX,barY,barW,barH,barH/2,{fill:glassFill(1),stroke:P.strokeSoft,shadowColor:P.shadow});
 
   /* symbol badge + capsule */
   const cy=barY+barH/2;
   const iconCX=barX+railPad+iconR;
   const sym=SYMBOLS.filter(function(s){return s.id===S.symbol;})[0]||SYMBOLS[0];
-  const symFont="600 "+Math.round(28*u)+"px "+INTER;
+  const symFont="600 "+symPx+"px "+INTER;
   g2.font=symFont;
   const tw=g2.measureText(sym.label).width;
-  const capH=58*u, capX=iconCX+iconR*0.42, textX=iconCX+iconR+26*u;
+  const capH=fit(58*u,symPx*2.071), capX=iconCX+iconR*0.42, textX=iconCX+iconR+26*u;
   glass(g2,capX,cy-capH/2,textX-capX+tw+30*u,capH,capH/2,
         {fill:glassFill(1.25),stroke:P.stroke,shadow:false});
   g2.font=symFont; g2.fillStyle=P.ink;
@@ -836,7 +875,7 @@ function drawTo(g2,k,useFull){
      follows. */
   if(S.logo && S.logoW>0 && S.logoH>0){
     const bs=iconR*2, inset=bs*0.14;
-    const bx=barX+(W-32)-railPad-bs, by=cy-bs/2;
+    const bx=barX+barW-railPad-bs, by=cy-bs/2;
     g2.save();
     rr(g2,bx,by,bs,bs,bs*0.26); g2.clip();
     const avail=bs-inset*2;
@@ -850,11 +889,12 @@ function drawTo(g2,k,useFull){
   /* wordmark, centred. With no username the logo centres on its own rather
      than leaving a dangling slash. */
   if(S.showMark){
-    const markSize=27*u, markText=S.handle?("/ "+S.handle):"";
+    const markPx=Math.round(26*ut);
+    const markSize=fit(27*u,markPx*1.038), markText=S.handle?("/ "+S.handle):"";
     g2.save();
-    if("letterSpacing" in g2) g2.letterSpacing=(1.2*u)+"px";
-    g2.font="400 "+Math.round(26*u)+"px "+POPPINS;
-    const mtw=markText?g2.measureText(markText).width:0, mgap=markText?14*u:0;
+    if("letterSpacing" in g2) g2.letterSpacing=(1.2*ut)+"px";
+    g2.font="400 "+markPx+"px "+POPPINS;
+    const mtw=markText?g2.measureText(markText).width:0, mgap=markText?fit(14*u,markPx*0.538):0;
     const gx=W/2-(markSize+mgap+mtw)/2;
     drawMark(g2,S.markLogo,gx+markSize/2,cy,markSize,P.ink);
     if(markText){
@@ -866,11 +906,14 @@ function drawTo(g2,k,useFull){
   }
 
   /* timeframe pill */
-  const tfFont="700 "+Math.round(30*u)+"px "+POPPINS;
+  const tfPx=Math.round(30*ut);
+  const tfFont="700 "+tfPx+"px "+POPPINS;
   g2.font=tfFont;
   const tfw=g2.measureText(S.timeframe).width;
-  const tfH=62*u, tfW=Math.max(104*u,tfw+56*u), tfY=barY-20*u-tfH;
-  glass(g2,(W-tfW)/2,tfY,tfW,tfH,22*u,{fill:glassFill(1.05),stroke:P.strokeSoft,shadowColor:P.shadow});
+  const tfH=fit(62*u,tfPx*2.067);
+  const tfW=Math.max(fit(104*u,tfPx*3.467),tfw+fit(56*u,tfPx*1.867));
+  const tfY=barY-fit(20*u,tfPx*0.667)-tfH;
+  glass(g2,(W-tfW)/2,tfY,tfW,tfH,tfH*0.355,{fill:glassFill(1.05),stroke:P.strokeSoft,shadowColor:P.shadow});
   g2.font=tfFont; g2.fillStyle=P.inkStrong;
   g2.textAlign="center"; g2.textBaseline="middle";
   g2.fillText(S.timeframe,W/2,tfY+tfH/2+1*u);
@@ -1039,7 +1082,12 @@ function setCropEdge(edge,value,fromInput){
 function refreshHints(){
   $("zoomHint").textContent=(S.zoom*100).toFixed(1)+"%";
   $("posHint").textContent=S.offX+", "+S.offY+" px";
-  $("uiHint").textContent=Math.round(S.ui*100)+"%";
+  /* Both numbers, because there are two. The first is the footprint, which is
+     what the slider sets; the second is the type, which deliberately does not
+     travel as far so the labels stay readable at the bottom of the range.
+     Saying only the first would be the same lie the old single scale told. */
+  const uiPct=Math.round(S.ui*100), typePct=Math.round((0.4+0.6*S.ui)*100);
+  $("uiHint").textContent=uiPct===typePct?uiPct+"%":uiPct+"% · type "+typePct+"%";
   const tn=Math.round(S.tint);
   $("tintHint").textContent = tn===0 ? "flat" : (tn>0 ? "+"+tn+" lighter" : tn+" darker");
   $("fadeHint").textContent=Math.round(S.fade)+"%";
