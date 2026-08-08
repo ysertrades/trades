@@ -353,6 +353,16 @@ body.embedded .head{margin-bottom:10px}
       </section>
 
       <section class="sec">
+        <div class="sech"><h3 class="lab">Corner badge</h3><span class="hint" id="logoHint">None</span></div>
+        <input type="file" id="logoFile" accept="image/*" style="display:none">
+        <div class="row">
+          <button type="button" class="mini" id="logoBtn">Upload image</button>
+          <button type="button" class="mini danger" id="logoClear" style="display:none">Remove</button>
+        </div>
+        <p class="note">Sits at the right end of the bottom rail, opposite the symbol, and scales with the overlay. It is fitted inside the badge rather than cropped to fill it, so a wide logo stays wide and nothing of it is cut off. Transparent PNG works best.</p>
+      </section>
+
+      <section class="sec">
         <div class="sech"><h3 class="lab">Export quality</h3><span class="hint" id="expHint">3840 × 2160</span></div>
         <div class="row" id="expRow"></div>
         <p class="note">PNG, lossless. Larger sizes redraw every label and badge at full resolution and pull detail from the original screenshot rather than the editing copy.</p>
@@ -604,17 +614,36 @@ function drawSymbolIcon(ctx,id,cx,cy,r){
 /* Downscaling a big screenshot needs an intermediate buffer. Building it
    per frame exhausts memory during a drag, so it is cached and only
    rebuilt when the crop or the halving depth actually changes. */
-let PYR = {key:null, canvas:null};
+/* ONE SLOT PER IMAGE, NOT ONE SLOT.
+ *
+ * This was a single cache entry keyed on the crop, which was correct while the
+ * screenshot was the only thing being downscaled. The corner badge is a second
+ * image on the same code path, and a shared slot breaks it two ways: the key
+ * carries no notion of WHICH image built the buffer, so two sources with
+ * matching crop numbers would hand each other the wrong pixels — and even
+ * without that collision they evict each other, so both pyramids get rebuilt
+ * on every single frame of a drag.
+ *
+ * Keyed by image now. The map holds at most a couple of entries, because at
+ * most a couple of images are ever on the card. */
+let PYR_ID = 0;
+const PYR = new Map();          // image id -> {key, canvas}
+function pyrId(img){
+  if(!img.__pyrId) img.__pyrId = ++PYR_ID;
+  return img.__pyrId;
+}
 function releasePyr(){
-  if(PYR.canvas){ PYR.canvas.width=0; PYR.canvas.height=0; }
-  PYR={key:null,canvas:null};
+  PYR.forEach(function(e){ if(e.canvas){ e.canvas.width=0; e.canvas.height=0; } });
+  PYR.clear();
 }
 function hqSource(img,sx,sy,sw,sh,dw,dh){
   const ratio=Math.max(sw/dw,sh/dh);
   if(!(ratio>2)) return null;                 // direct draw is already clean
   const steps=Math.max(1,Math.floor(Math.log(ratio)/Math.LN2));
+  const id=pyrId(img);
   const key=[Math.round(sx),Math.round(sy),Math.round(sw),Math.round(sh),steps].join(",");
-  if(PYR.key===key && PYR.canvas) return PYR.canvas;
+  const hit=PYR.get(id);
+  if(hit && hit.key===key && hit.canvas) return hit.canvas;
 
   let cw=Math.round(sw), ch=Math.round(sh);
   let buf=document.createElement("canvas"); buf.width=cw; buf.height=ch;
@@ -630,8 +659,10 @@ function hqSource(img,sx,sy,sw,sh,dw,dh){
     buf.width=0; buf.height=0;                // free immediately
     buf=nb; cw=nw; ch=nh;
   }
-  releasePyr();
-  PYR={key:key,canvas:buf};
+  /* Only this image's entry is dropped — the other one is still valid and
+     rebuilding it would be the thrash this map exists to prevent. */
+  if(hit && hit.canvas){ hit.canvas.width=0; hit.canvas.height=0; }
+  PYR.set(id,{key:key,canvas:buf});
   return buf;
 }
 function drawImageHQ(ctx,img,sx,sy,sw,sh,dx,dy,dw,dh,k){
@@ -652,6 +683,10 @@ const S = {
   crop:{l:0,r:0,t:0,b:0},
   ui:1, tint:50, fade:100, showMark:true, fitMode:"fit",
   markLogo:"x", handle:"YSERTRADES",
+  /* The corner badge. The Image is kept at its original resolution and never
+     pre-scaled, so an export at 8K draws it at 8K rather than blowing up an
+     editing copy — the same rule the screenshot follows. */
+  logo:null, logoW:0, logoH:0,
   bg:BG_DEFAULT, pal:null
 };
 S.pal=buildPalette(S.bg);
@@ -712,10 +747,18 @@ function drawTo(g2,k,useFull){
 
   const u=S.ui;
 
-  /* session tabs — active one pinned to the centre */
-  const tabFont="600 "+Math.round(29*u)+"px "+POPPINS;
+  /* session tabs — active one pinned to the centre.
+
+     THE ACTIVE PILL IS A ROUNDED RECTANGLE, NOT A CAPSULE. It used to be 58
+     tall with a radius of half its height, which is the shape a capsule takes
+     whatever you put in it — and at that height it was the loudest object on a
+     card whose subject is the chart. Squarer and shorter reads as a label on
+     the chart rather than a button floating over it, and it stops competing
+     with the timeframe pill at the bottom, which IS a capsule and is meant to
+     be the round one. */
+  const tabFont="600 "+Math.round(24*u)+"px "+POPPINS;
   g2.font=tabFont;
-  const tabH=58*u, tabY=40*u, padX=26*u, gap=22*u;
+  const tabH=36*u, tabY=46*u, padX=17*u, gap=19*u, tabR=10*u;
   const ai=Math.max(0,SESSIONS.indexOf(S.session));
   const ordered=[SESSIONS[(ai+2)%3],SESSIONS[ai],SESSIONS[(ai+1)%3]];
   const tabs=ordered.map(function(label){
@@ -730,8 +773,11 @@ function drawTo(g2,k,useFull){
     const active=(i===1), cx2=t.x+t.w/2;
     if(active){
       g2.save();
-      g2.shadowColor=P.tabShadow; g2.shadowBlur=16; g2.shadowOffsetY=4;
-      rr(g2,t.x,tabY,t.w,tabH,tabH/2); g2.fillStyle=P.tabBg; g2.fill();
+      /* A softer shadow than the capsule wore: a shorter shape with a tighter
+         radius shows more of its own edge, so the same blur read as a smudge
+         under it. */
+      g2.shadowColor=P.tabShadow; g2.shadowBlur=12; g2.shadowOffsetY=3;
+      rr(g2,t.x,tabY,t.w,tabH,tabR); g2.fillStyle=P.tabBg; g2.fill();
       g2.restore();
     }
     g2.font=tabFont; g2.textAlign="center"; g2.textBaseline="middle";
@@ -776,6 +822,30 @@ function drawTo(g2,k,useFull){
   g2.textAlign="left"; g2.textBaseline="middle";
   g2.fillText(sym.label,textX,cy+1*u);
   drawSymbolIcon(g2,sym.id,iconCX,cy,iconR);
+
+  /* corner badge — the mirror of the symbol, at the other end of the rail.
+
+     CONTAIN, NOT COVER. The box is square because the symbol opposite it is,
+     but almost no logo is: fitting the image inside its box preserves the
+     aspect ratio and shows all of it, where filling the box would crop a wide
+     mark down to its middle. `inset` keeps it off its own rounded corners so it
+     reads as a badge rather than as a picture jammed into a hole.
+
+     Drawn from the ORIGINAL image at whatever k the export is running at, so
+     the badge is as sharp as the size you picked — the same rule the screenshot
+     follows. */
+  if(S.logo && S.logoW>0 && S.logoH>0){
+    const bs=iconR*2, inset=bs*0.14;
+    const bx=barX+(W-32)-railPad-bs, by=cy-bs/2;
+    g2.save();
+    rr(g2,bx,by,bs,bs,bs*0.26); g2.clip();
+    const avail=bs-inset*2;
+    const sc=Math.min(avail/S.logoW,avail/S.logoH);
+    const dw=S.logoW*sc, dh=S.logoH*sc;
+    drawImageHQ(g2,S.logo,0,0,S.logoW,S.logoH,
+                bx+(bs-dw)/2,by+(bs-dh)/2,dw,dh,k);
+    g2.restore();
+  }
 
   /* wordmark, centred. With no username the logo centres on its own rather
      than leaving a dangling slash. */
@@ -1217,17 +1287,26 @@ $("exportBtn").onclick=function(){
      is rasterised natively at the output resolution rather than scaled up
      from the preview.
 
-     Every size is also supersampled now, not just 1080p: render larger, then
-     resolve down, which is what actually cleans up the edges of the badges,
-     the pill and the type. Only 1080p used to get that, so choosing a bigger
-     export bought pixels but lost the anti-aliasing pass and did not look
-     meaningfully better.
+     Every size is supersampled: render larger, then resolve down, which is what
+     actually cleans up the edges of the badges, the pill and the type.
 
-     The ceiling of 4 keeps the working canvas at 7680x4320 — exactly what an
-     8K export already allocates today, so nothing new can run out of memory
-     that did not before, and attempt() drops the supersample if it does. */
+     THE CEILING USED TO BE 4, AND THAT MADE THE BIGGEST EXPORT THE SOFTEST.
+     renderK was min(4, mul*2), so 1080p and 4K each got a full double pass
+     while 6K got a third of one and 8K got NONE — it rendered at 7680 and saved
+     at 7680. Choosing the largest size bought pixels and quietly gave up the
+     anti-aliasing that made the smaller ones look clean, which is the opposite
+     of what picking it means.
+
+     So it is a ladder now rather than a single guess, tried highest first: a
+     full double pass where the device can hold it, a partial one if not, and
+     the plain native redraw as the floor. attempt() returns null rather than
+     throwing when a canvas that size cannot be allocated, so the step down
+     costs a failed allocation and nothing else — no quality is assumed that the
+     phone in your hand cannot actually deliver. */
   const mul=S.exportMul;
-  const renderK=Math.min(4,mul*2);
+  const ladder=[mul*2,Math.ceil(mul*1.5),mul]
+    .filter(function(v,i,a){ return v>=mul && a.indexOf(v)===i; })
+    .sort(function(a,b){ return b-a; });
   const outW=W*mul, outH=H*mul;
   const name=S.symbol+"-"+S.session.replace(/\s+/g,"")+"-"+S.timeframe+"-"+outW+"x"+outH+".png";
 
@@ -1263,8 +1342,8 @@ $("exportBtn").onclick=function(){
   }
 
   requestAnimationFrame(function(){ requestAnimationFrame(function(){
-    let canvasOut=attempt(renderK);
-    if(!canvasOut && renderK!==mul) canvasOut=attempt(mul);   // drop the supersample
+    let canvasOut=null;
+    for(let li=0; li<ladder.length && !canvasOut; li++) canvasOut=attempt(ladder[li]);
     if(!canvasOut && mul>1){
       showError("Not enough memory for "+outW+" × "+outH+". Try a smaller export size.");
       finish(); return;
@@ -1330,6 +1409,44 @@ $("tfInput").oninput=function(){
   buildChips(); draw();
 };
 $("markChk").onchange=function(){ S.showMark=$("markChk").checked; draw(); };
+/* ---- the corner badge ---------------------------------------------------
+   Held as an Image at its natural size and never pre-scaled. drawTo fits it
+   into the badge at draw time, so the preview and an 8K export are the same
+   code path at different resolutions rather than two renderers to keep in
+   step. */
+function setLogo(im){
+  S.logo=im; S.logoW=im?im.naturalWidth:0; S.logoH=im?im.naturalHeight:0;
+  $("logoClear").style.display=im?"inline-flex":"none";
+  $("logoHint").textContent=im?(S.logoW+" × "+S.logoH):"None";
+  draw();
+}
+$("logoBtn").onclick=function(){ $("logoFile").click(); };
+$("logoFile").onchange=function(e){
+  const f=e.target.files&&e.target.files[0];
+  e.target.value="";
+  if(!f) return;
+  if(f.type && f.type.indexOf("image/")!==0){
+    showError("That file isn't an image. Use a PNG, JPG or WebP.");
+    return;
+  }
+  showError("");
+  const reader=new FileReader();
+  reader.onerror=function(){ showError("Couldn't read that file. Try saving it as PNG."); };
+  reader.onload=function(){
+    const im=new Image();
+    im.onload=function(){
+      if(!(im.naturalWidth>0)||!(im.naturalHeight>0)){
+        showError("That image has no size to draw."); return;
+      }
+      setLogo(im);
+    };
+    im.onerror=function(){ showError("That image didn't decode. Save it as PNG or JPG and try again."); };
+    im.src=reader.result;
+  };
+  reader.readAsDataURL(f);
+};
+$("logoClear").onclick=function(){ setLogo(null); };
+
 $("handleInput").oninput=function(){
   S.handle=$("handleInput").value.slice(0,20);
   draw();
@@ -1351,8 +1468,15 @@ const zoomSlider=makeSlider($("zoomSlider"),{
   get:function(){return Math.min(400,Math.max(20,S.zoom*100));},
   set:function(v){ S.zoom=v/100; update(); }
 });
+/* 55 to 130, not 80 to 120.
+ *
+ * The old range was the bug behind "it only reduces a little bit when the whole
+ * slider is finished": dragging the thing end to end moved the overlay by a
+ * fifth, so most of the travel was doing nothing you could see and the far left
+ * still looked like the default. Down to 55 the labels genuinely get out of the
+ * chart's way, which is what the control is for. */
 makeSlider($("uiSlider"),{
-  min:80,max:120,step:1,
+  min:55,max:130,step:1,
   get:function(){return S.ui*100;},
   set:function(v){ S.ui=v/100; update(); }
 });
