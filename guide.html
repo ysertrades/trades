@@ -2117,24 +2117,22 @@ if(document.fonts && document.fonts.ready){
      constant, the seeded hash, the sprite's gradient stops and the wrap margin
      are the same numbers. They have to be. The deck sits behind the same tab
      switcher as the dial, on the same ground, under the same glass — if the
-     stars flew at a different speed or spread here you would see the seam every
-     time you crossed between them.
+     field drifted at a different size or speed here you would see the seam
+     every time you crossed between them.
 
      Three things about the way it is drawn are load-bearing:
 
-       · The canvas NEVER CHANGES ITS OWN OPACITY. A canvas is its own
-         compositing layer; fading one over a surface that is also fading is how
-         it ends up painted at full strength for a frame. The dimming below is
-         in the stroke alpha — in the pixels — not in the element.
+       · The canvas is TRANSPARENT and never changes opacity. A canvas is its
+         own compositing layer; fading one over a surface that is also fading
+         is how it ends up painted at full strength for a frame.
 
-       · The surface fill is OPAQUE, and it is the deck's own #121212. It is
-         what erases the previous frame, which a streak field cannot do any
-         other way, and painting the colour that is already there makes an
-         opaque layer invisible.
+       · Dots are ONE 64px sprite, stamped with drawImage. A soft-edged dot
+         wants a radial gradient, and building thirty-four of them per frame is
+         the expensive way to get one.
 
-       · One device pixel per CSS pixel. That fill is the entire cost of this
-         effect and it scales with pixels rather than with stars — see the
-         measurements in the script below.
+       · Clearing is per-dot, not full-surface — ~34 small rects instead of a
+         megapixel wipe. Every clear happens before any draw, or two dots that
+         overlap erase each other.
 
      It does not stop while the document is showing. A background that freezes
      the moment you look away is a background you notice. -->
@@ -2145,37 +2143,36 @@ if(document.fonts && document.fonts.ready){
   var ctx = canvas.getContext('2d');
   if(!ctx) return;
 
-  var COUNT = 180;
-  var SPEED = 0.55;     /* z per frame */
-  var NEAR  = 26;       /* recycled once nearer than this */
-  var GROUND = '#121212';   /* keep in step with --ground above */
-  var BUCKETS = 3, WIDTHS = [0.5, 0.9, 1.4];
+  var COUNT = 34;
+  var MIN_SIZE = 0.8, MAX_SIZE = 1.9;
+  var SPRITE = 64;      /* drawn at 64 and scaled down, never up */
+  var HALO = 4.2;       /* how far past the dot the soft tail reaches */
 
   /* Keeping the original hash means the field is identical on every open
      rather than reshuffling. This sits under text you are reading. */
   function seeded(n){ return Math.abs(Math.sin(n*9999.123 + 78.233) * 43758.5453) % 1; }
 
+  var sprite = document.createElement('canvas');
+  sprite.width = sprite.height = SPRITE;
+  (function(){
+    var g = sprite.getContext('2d'), r = SPRITE/2;
+    var grad = g.createRadialGradient(r,r,0,r,r,r);
+    grad.addColorStop(0,   'rgba(255,255,255,1)');
+    grad.addColorStop(0.22,'rgba(255,255,255,0.85)');
+    grad.addColorStop(0.5, 'rgba(255,255,255,0.16)');
+    grad.addColorStop(1,   'rgba(255,255,255,0)');
+    g.fillStyle = grad;
+    g.beginPath(); g.arc(r,r,r,0,Math.PI*2); g.fill();
+  })();
+
   var reduced = window.matchMedia
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  /* Capped at 2 rather than taken from the device: at DPR 3 this is a ~3.6
+     megapixel surface, and these are soft dots with no edge a third pixel
+     could sharpen. */
+  var dpr = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
 
-  /* ONE DEVICE PIXEL PER CSS PIXEL, AND IT IS THE WHOLE PERFORMANCE STORY.
-     A streak field cannot clear per-dot the way the drifting dots did: the
-     trail IS the line from last frame to this one, so what erases the previous
-     frame is a fill of the entire surface. That fill is the cost and it scales
-     with pixels, not stars. Measured on the Sessions copy at 6x CPU throttle,
-     360 frames, counting frames over 33ms:
-
-         180 stars, DPR 2   77        60 stars, DPR 2   23
-         180 stars, DPR 1    0        60 stars, DPR 1    0
-
-     Hairline white lines on a near-black ground are the one thing a second
-     device pixel cannot improve, so the cap is 1. */
-  var dpr = 1;
-
-  var raf = 0, w = 0, h = 0, cx = 0, cy = 0, depth = 0, focal = 0;
-  var sx = new Float32Array(COUNT), sy = new Float32Array(COUNT),
-      sz = new Float32Array(COUNT), pxs = new Float32Array(COUNT),
-      pys = new Float32Array(COUNT), fresh = new Uint8Array(COUNT);
+  var raf = 0, w = 0, h = 0, particles = [], painted = false;
 
   /* ── Why the field watches the slide's opacity ──────────────────────────
      A slide fades in over a field that does not fade with it, and the panel is
@@ -2215,83 +2212,67 @@ if(document.fonts && document.fonts.ready){
     return FLOOR + (1 - FLOOR) * o;
   }
 
-  /* x and y are world coordinates in [-1, 1] and never change once a star is
-     placed — the outward motion is entirely the projection dividing by a
-     shrinking z. That is what makes them viewport-independent: a resize
-     reprojects the same field rather than rebuilding it. */
-  function put(i, rx, ry, rz){
-    sx[i] = rx*2 - 1; sy[i] = ry*2 - 1;
-    sz[i] = NEAR + rz * (depth - NEAR);
-    fresh[i] = 1;
-  }
   function seed(){
-    for(var i=0;i<COUNT;i++) put(i, seeded(i+1.3), seeded(i+2.7), seeded(i+5.5));
+    particles = [];
+    for(var i=0;i<COUNT;i++){
+      var depth = seeded(i + 5.5);              /* 0 far, 1 near */
+      var angle = seeded(i + 4.9) * Math.PI * 2;
+      var speed = 0.05 + depth * 0.16;
+      particles.push({
+        x: seeded(i + 1.3) * w,
+        y: seeded(i + 2.7) * h,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        size: MIN_SIZE + depth * (MAX_SIZE - MIN_SIZE),
+        alpha: 0.07 + depth * 0.13,
+        dx: 0, dy: 0                            /* last drawn, for the dirty rect */
+      });
+    }
   }
-  function recycle(i){ put(i, Math.random(), Math.random(), 1); }
 
   function draw(move){
-    var fade = surfaceAlpha(), i, b;
-
-    /* Opaque, and with the deck's own colour. This fill is what erases the
-       previous frame — a transparent clear would leave every streak on the
-       canvas for ever — and using the ground makes an opaque layer invisible
-       against the surface it sits on. */
-    ctx.fillStyle = GROUND;
-    ctx.fillRect(0, 0, w, h);
-
-    if(move){
-      for(i=0;i<COUNT;i++){ sz[i] -= SPEED; if(sz[i] <= NEAR) recycle(i); }
-    }
-
-    /* Stroked in three width buckets rather than one path each: every
-       beginPath/stroke pair is a separate rasteriser run, so N stars cost N of
-       them, and bucketed by depth they cost three. */
-    for(b=0;b<BUCKETS;b++){
-      ctx.lineWidth = WIDTHS[b];
-      ctx.beginPath();
-      var any = false;
-      for(i=0;i<COUNT;i++){
-        var z = sz[i];
-        var k = 1 - (z - NEAR) / (depth - NEAR);
-        if(Math.floor(k * BUCKETS * 0.999) !== b) continue;
-        var nx = cx + (sx[i] * focal) / z;
-        var ny = cy + (sy[i] * focal) / z;
-        if(!fresh[i]){
-          var seen = (nx > -40 && nx < w+40 && ny > -40 && ny < h+40)
-            || (pxs[i] > -40 && pxs[i] < w+40 && pys[i] > -40 && pys[i] < h+40);
-          if(seen){ ctx.moveTo(pxs[i], pys[i]); ctx.lineTo(nx, ny); any = true; }
-        }
-        pxs[i] = nx; pys[i] = ny; fresh[i] = 0;
+    var i, p, fade = surfaceAlpha();
+    if(painted){
+      for(i=0;i<particles.length;i++){
+        p = particles[i];
+        var box = p.size * HALO + 4;            /* + antialiasing slack */
+        ctx.clearRect(p.dx - box/2, p.dy - box/2, box, box);
       }
-      if(any){
-        ctx.strokeStyle = 'rgba(255,255,255,' + ((0.16 + b*0.13) * fade).toFixed(3) + ')';
-        ctx.stroke();
-      }
+      painted = false;
     }
+    for(i=0;i<particles.length;i++){
+      p = particles[i];
+      if(move){
+        p.x += p.vx; p.y += p.vy;
+        var m = p.size * HALO;                  /* wrap allowing for the tail */
+        if(p.x < -m) p.x = w + m; else if(p.x > w + m) p.x = -m;
+        if(p.y < -m) p.y = h + m; else if(p.y > h + m) p.y = -m;
+      }
+      var d = p.size * HALO;
+      ctx.globalAlpha = p.alpha * fade;
+      ctx.drawImage(sprite, p.x - d/2, p.y - d/2, d, d);
+      p.dx = p.x; p.dy = p.y;
+    }
+    ctx.globalAlpha = 1;
+    painted = true;
   }
 
   function resize(){
     var rect = canvas.getBoundingClientRect();
     var nw = Math.max(1, rect.width), nh = Math.max(1, rect.height);
     if(nw === w && nh === h) return;
+    /* Rescale what is already there rather than re-seeding: assigning
+       canvas.width clears the surface, so re-seeding on a resize would blank
+       the field and teleport it. On iOS the address bar alone fires this. */
     var first = w === 0;
+    var sx = first ? 1 : nw/w, sy = first ? 1 : nh/h;
     w = nw; h = nh;
-    cx = w/2; cy = h/2;
-    depth = (w + h) / 2;
-    /* Chosen so a star at its nearest reaches the long edge: focal / NEAR is
-       the distance it has to cover. Smaller and stars vanish before they leave
-       the middle; larger and they spend their whole life off-screen. */
-    focal = NEAR * Math.max(w, h);
     canvas.width = Math.floor(w*dpr);
     canvas.height = Math.floor(h*dpr);
     ctx.setTransform(dpr,0,0,dpr,0,0);
-    ctx.lineCap = 'round';
-    /* Re-seeding on a resize would blank and teleport the field. Only the
-       first sizing seeds; after that the stars keep their world coordinates,
-       which are viewport-independent, and simply reproject. On iOS the address
-       bar alone fires this. */
     if(first) seed();
-    else for(var i=0;i<COUNT;i++) fresh[i] = 1;   /* no stale streaks */
+    else for(var i=0;i<particles.length;i++){ particles[i].x *= sx; particles[i].y *= sy; }
+    painted = false;                            /* the resize already cleared it */
     draw(false);
   }
 
