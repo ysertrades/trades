@@ -442,38 +442,15 @@
           <div class="col">
             <h3 class="h3">Getting the file out</h3>
             <p>A download fires automatically, then a bar appears with a thumbnail and
-              three routes out — four once Discord is connected. This is deliberate:
-              inside an embedded frame a plain download can be blocked by the host's
-              sandbox, and at least one of these always works.</p>
+              three routes. This is deliberate: inside an embedded frame a plain download
+              can be blocked by the host's sandbox, and at least one of these always works.</p>
             <div class="spec tight">
               <div class="row"><span class="lab">Download</span><p>Fires the download again, by hand.</p></div>
               <div class="row"><span class="lab">Share</span><p>The native share sheet. Appears only where the device supports sharing files — mostly phones.</p></div>
               <div class="row"><span class="lab">Open in tab</span><p>Opens the PNG on its own so you can save it manually. The universal fallback.</p></div>
-              <div class="row"><span class="lab">Send to Discord</span><p>Posts the card straight into a channel. Appears only once you have connected one.</p></div>
             </div>
             <p class="fine">If a device cannot allocate a canvas that large, the export
               steps down and tells you to pick a smaller size rather than failing silently.</p>
-
-            <h3 class="h3">Connecting Discord</h3>
-            <p>Connect opens Discord's own screen and asks it for one thing: permission to
-              post to a single channel. Discord decides which channels you are shown —
-              only ones where you hold Manage Webhooks — so the permission check is theirs,
-              not this editor's.</p>
-            <div class="note">
-              <span class="note-lab">What is kept, and where</span>
-              <p>One webhook link, on your device. No account, no password and no Discord
-                token — the login is thrown away the moment it has been exchanged. That
-                link can post to the one channel you chose and do nothing else.</p>
-            </div>
-            <div class="note warn">
-              <span class="note-lab">Treat the link like a password</span>
-              <p>Anyone who has it can post to that channel. Disconnect deletes it at
-                Discord rather than just forgetting it here, which is the difference
-                between revoking it and leaving it live.</p>
-            </div>
-            <p class="fine">Discord always gets the 1920 × 1080 card, whichever export size
-              you have picked — their upload ceiling is well under an 8K PNG, so choosing
-              a bigger download does not quietly break the send.</p>
           </div>
         </div>
       </article>
