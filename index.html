@@ -167,8 +167,13 @@ canvas{display:block;width:100%;height:auto;touch-action:none}
 .num{height:34px;width:62px;border-radius:9px;border:1px solid var(--ctrl-bd);background:var(--ctrl);padding:0 8px;
   font:400 12.5px/1 Poppins,sans-serif;color:var(--ink);font-variant-numeric:tabular-nums}
 .num:focus{outline:none;border-color:rgba(255,255,255,.34)}
-.edge{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.edge{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;margin-bottom:2px}
 .edge>span{width:46px;font-size:12px;color:var(--ink-2);flex:none}
+/* The slider takes the room the four buttons used to. min-width:0 because a
+   flex item's automatic minimum is its content, and without it the track
+   refuses to shrink on a 320px screen and pushes the readout off the edge. */
+.edge .edge-slider{flex:1;min-width:0;width:auto}
+.edge .num{width:60px;flex:none;text-align:center}
 .note{margin:8px 0 0;font-size:11px;line-height:1.5;color:var(--ink-4)}
 .check{display:flex;align-items:center;gap:8px;margin-top:11px;font-size:12.5px;color:var(--ctrl-ink);cursor:pointer;user-select:none}
 .check input{width:16px;height:16px;accent-color:var(--signal)}
@@ -357,7 +362,7 @@ body.embedded .head{margin-bottom:10px}
       <section class="sec">
         <div class="sech"><h3 class="lab">Trim edges</h3><span class="hint" id="sizeHint">—</span></div>
         <div id="edges"></div>
-        <p class="note">Cuts in source pixels, so you can shave a half candle off without the frame jumping.</p>
+        <p class="note">Drag to trim, type for an exact number. Cuts in source pixels, so you can shave a half candle off without the frame jumping — and the first half of each track covers the first quarter of the range, where the shaving actually happens.</p>
       </section>
 
       <section class="sec">
@@ -1018,20 +1023,44 @@ function buildChips(){
 function makeSlider(el,opts){
   const fill=el.querySelector(".fill"), thumb=el.querySelector(".thumb");
   let active=false;
+  /* A MOVING CEILING AND A BENT TRACK, both optional and both off by default,
+     so every slider that existed before this behaves exactly as it did.
+
+     `max` may be a function because the trim edges limit each other: how far
+     left can be pushed depends on where right already is.
+
+     `curve` maps the track position to the value and `uncurve` maps it back.
+     A linear trim slider on a 3840px screenshot moves ~15px of image per pixel
+     of track on a phone, which is useless for the shaving that trimming
+     actually is. Squaring the track spends its first half on the first
+     quarter of the range and still reaches the far end. */
+  const curve=opts.curve||function(t){return t;};
+  const uncurve=opts.uncurve||function(x){return x;};
+  const top=function(){ return typeof opts.max==="function"?opts.max():opts.max; };
   function paint(){
-    const pct=Math.max(0,Math.min(100,((opts.get()-opts.min)/(opts.max-opts.min))*100));
+    const span=top()-opts.min;
+    const raw=span>0?(opts.get()-opts.min)/span:0;
+    const pct=Math.max(0,Math.min(100,uncurve(Math.max(0,Math.min(1,raw)))*100));
     fill.style.width=pct+"%";
-    /* derived from the thumb's real width, so it stays centred when touch
-       sizing makes it bigger */
-    thumb.style.left="calc("+pct+"% - "+((thumb.offsetWidth||20)/2)+"px)";
+    /* INSET, NOT CENTRED. It used to be centred on the value — pct% minus half
+       a thumb — which hangs half the thumb off the end of the track at 0 and at
+       100. No slider that existed before this ever sat at either end, so it
+       never showed; the four trim edges all start at 0 and all showed it at
+       once, and it read as the row being clipped rather than the thumb being
+       loose. Travelling across (track − thumb) keeps it inside at both ends and
+       is identical to the old placement in the middle, which is where every
+       other slider lives. */
+    const tw=thumb.offsetWidth||20;
+    thumb.style.left="calc("+pct+"% - "+((pct/100)*tw).toFixed(2)+"px)";
   }
   function commit(clientX){
     if(el.dataset.off==="1") return;
     const r=el.getBoundingClientRect();
+    const mx=top();
     let t=Math.max(0,Math.min(1,(clientX-r.left)/r.width));
-    let v=opts.min+t*(opts.max-opts.min);
+    let v=opts.min+curve(t)*(mx-opts.min);
     v=Math.round(v/opts.step)*opts.step;
-    v=Math.min(opts.max,Math.max(opts.min,+v.toFixed(4)));
+    v=Math.min(mx,Math.max(opts.min,+v.toFixed(4)));
     opts.set(v); paint();
   }
   el.addEventListener("pointerdown",function(e){
@@ -1170,31 +1199,66 @@ function buildBackdrops(){
   });
 }
 
+/* SIXTEEN BUTTONS BECAME FOUR SLIDERS.
+
+   Each edge used to be −, a number, +, +10 — four taps to move ten pixels and
+   forty to move a hundred, times four edges. Trimming is a continuous gesture
+   being asked for in discrete increments, which is the wrong shape for it: you
+   are watching the card, not counting, and the answer is "there", not "+37".
+
+   The number stays. It is the one thing a slider is bad at — typing an exact
+   value, and reading back what you landed on — and it is now a readout you can
+   also edit rather than the only way in.
+
+   Each slider's ceiling is a function, not a constant, because the two edges of
+   an axis share a budget: left can only travel as far as right has left it,
+   less the 20px of image setCropEdge insists on keeping. */
+const EDGE_PAIR={l:"r",r:"l",t:"b",b:"t"};
+function edgeMax(edge){
+  if(!S.img) return 0;
+  const horiz=(edge==="l"||edge==="r");
+  const span=horiz?S.imgW:S.imgH;
+  return Math.max(0,span-S.crop[EDGE_PAIR[edge]]-20);
+}
 function buildEdges(){
   const box=$("edges"); box.innerHTML="";
   [["Left","l"],["Right","r"],["Top","t"],["Bottom","b"]].forEach(function(pair){
     const label=pair[0], edge=pair[1];
     const row=document.createElement("div"); row.className="edge";
     const sp=document.createElement("span"); sp.textContent=label; row.appendChild(sp);
-    function mk(txt,delta){
-      const b=document.createElement("button"); b.className="mini"; b.type="button"; b.textContent=txt;
-      b.onclick=function(){ setCropEdge(edge,S.crop[edge]+delta); };
-      return b;
-    }
-    row.appendChild(mk("−",-1));
+
+    const sl=document.createElement("div");
+    sl.className="slider edge-slider";
+    sl.innerHTML='<div class="track"></div><div class="fill"></div><div class="thumb"></div>';
+    sl.setAttribute("aria-label",label+" trim");
+    row.appendChild(sl);
+
     const inp=document.createElement("input");
-    inp.className="num"; inp.type="number"; inp.value=S.crop[edge];
+    inp.className="num"; inp.type="number"; inp.value=S.crop[edge]; inp.min="0";
     inp.dataset.edge=edge;
     inp.oninput=function(){ setCropEdge(edge,Number(inp.value)||0,true); };
     row.appendChild(inp);
-    row.appendChild(mk("+",1));
-    row.appendChild(mk("+10",10));
+
+    makeSlider(sl,{
+      min:0, max:function(){ return edgeMax(edge); }, step:1,
+      curve:function(t){ return t*t; },
+      uncurve:function(x){ return Math.sqrt(x); },
+      get:function(){ return S.crop[edge]; },
+      set:function(v){ setCropEdge(edge,v); }
+    });
     box.appendChild(row);
   });
+  syncEdges();
 }
 function syncEdges(){
   document.querySelectorAll("#edges input").forEach(function(i){
     if(document.activeElement!==i) i.value=S.crop[i.dataset.edge];
+  });
+  /* Both edges of an axis repaint, not just the one that moved: shifting left
+     changes how far right is ALLOWED to go, so its thumb sits somewhere else
+     on the track even though its value did not change. */
+  document.querySelectorAll("#edges .edge-slider").forEach(function(s){
+    if(s.paint) s.paint();
   });
 }
 function setCropEdge(edge,value,fromInput){
@@ -1204,7 +1268,10 @@ function setCropEdge(edge,value,fromInput){
   if(n.l+n.r>S.imgW-20) return;
   if(n.t+n.b>S.imgH-20) return;
   S.crop=n;
-  if(!fromInput) syncEdges();
+  /* Always, not only when the change came from a button. syncEdges skips the
+     field you are typing in on its own, and the sliders have to move whatever
+     moved the value — including the opposite edge's ceiling shifting. */
+  syncEdges();
   update();
 }
 
