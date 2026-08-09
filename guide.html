@@ -484,27 +484,16 @@
 
           <div class="col">
             <h3 class="h3">Getting the file out</h3>
-            <p>A download fires automatically, and then the finished card appears below it
-              at full width. <b>That image is the delivery, not a receipt for one.</b></p>
-            <p>On a phone, inside an app that frames this page, every programmatic route
-              out is shut: the download link is dropped without raising anything, a
-              <code>blob:</code> URL will not open in a tab, and the share sheet needs a
-              permission the host frame does not grant. Press and hold the image and choose
-              <b>Save to Photos</b> — that route needs nobody's permission, which is why the
-              card is now shown big enough to press instead of as a 64px thumbnail.</p>
+            <p>A download fires automatically, then a bar appears with a thumbnail and
+              three routes. This is deliberate: inside an embedded frame a plain download
+              can be blocked by the host's sandbox, and at least one of these always works.</p>
             <div class="spec tight">
-              <div class="row"><span class="lab">Press and hold</span><p>The image itself. The one route that works inside a framed app on a phone.</p></div>
-              <div class="row"><span class="lab">Save file</span><p>Fires the download again, by hand. The best route on a desktop.</p></div>
-              <div class="row"><span class="lab">Share</span><p>The native share sheet. If the host app blocks it, the button now says so rather than doing nothing.</p></div>
-              <div class="row"><span class="lab">Open in tab</span><p>Opens the PNG on its own so you can save it manually. Works on a desktop; a framed app usually refuses it.</p></div>
+              <div class="row"><span class="lab">Download</span><p>Fires the download again, by hand.</p></div>
+              <div class="row"><span class="lab">Share</span><p>The native share sheet. Appears only where the device supports sharing files — mostly phones.</p></div>
+              <div class="row"><span class="lab">Open in tab</span><p>Opens the PNG on its own so you can save it manually. The universal fallback.</p></div>
             </div>
-            <p class="fine">A device that cannot hold a canvas that large does not always
-              say so — Safari hands back one that is silently blank, which used to sail
-              through as a successful export and give you a transparent PNG. Every attempt
-              is now checked after it is drawn, and a failed one steps down the ladder
-              instead of being trusted. 8K is gone for the same reason: its supersampled
-              pass asked for 132 million pixels and killed the tab before anything could
-              catch it.</p>
+            <p class="fine">If a device cannot allocate a canvas that large, the export
+              steps down and tells you to pick a smaller size rather than failing silently.</p>
           </div>
         </div>
       </article>
