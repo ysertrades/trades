@@ -129,17 +129,32 @@ canvas{display:block;width:100%;height:auto;touch-action:none}
 .chip{height:34px;padding:0 12px;border-radius:9px;border:1px solid var(--ctrl-bd);background:var(--ctrl);color:var(--ctrl-ink);
   font:500 12.5px/1 Poppins,sans-serif;cursor:pointer;white-space:nowrap}
 .chip:active{background:var(--ctrl-hit)}
-/* A CHIP THAT SHOWS ITS OWN ANSWER. The rail-width switch was a pair of words
-   with a paragraph underneath explaining what the words meant — which is the
-   long way round for a choice whose entire content is a SHAPE. Each chip
-   carries a 16:9 card with the bar drawn in it at that setting, so the picking
-   and the explaining are the same gesture and the paragraph is down to a line.
-   The glyph is drawn in currentColor, so it inverts with the chip when it is
-   the one selected and needs no second rule. */
-.chip-fig{display:inline-flex;align-items:center;gap:9px;padding-left:9px;height:38px}
-.chip-fig svg{display:block;width:36px;height:21px;flex:none;overflow:visible}
+/* A CHIP THAT SHOWS ITS OWN ANSWER.
+
+   It started with the rail-width switch, which was a pair of words and a
+   paragraph explaining what the words meant — the long way round for a choice
+   whose entire content is a SHAPE. It reads better as a picture, so every
+   control whose answer is a shape or a mark now carries one, and the picking
+   and the explaining are the same gesture.
+
+   NOT EVERY CONTROL. Timeframe chips say H4, and H4 is the icon; export sizes
+   already state their pixels and are all 16:9, so a proportional rectangle
+   would be four identical rectangles. A glyph that carries no information is
+   just noise wearing a uniform.
+
+   SVG glyphs draw in currentColor, so they invert with the selected chip for
+   free. Canvas glyphs cannot — they are handed the chip's resolved colour at
+   build time instead, which works because buildChips() reruns on every
+   change. Brand-coloured badges are exempt: an NQ badge is blue on both. */
+.chip-fig{display:inline-flex;align-items:center;gap:8px;padding-left:9px;height:38px}
+.chip-fig svg{display:block;flex:none;overflow:visible}
+.chip-fig svg.g-rail{width:36px;height:21px}
+.chip-fig svg.g-fit{width:24px;height:21px}
+.chip-fig svg.g-sess{width:26px;height:14px}
+.chip-fig canvas{display:block;width:21px;height:21px;flex:none}
 .chip-fig .fr{fill:none;stroke:currentColor;opacity:.34;stroke-width:1.4}
 .chip-fig .br{fill:currentColor;opacity:.92}
+.chip-fig .dim{fill:currentColor;opacity:.28}
 /* Selected is LIGHT on dark — the exact inverse of the light theme's black
    pill, and the same #E9EDF4 the guide uses for the chip it is showing you. */
 .chip[data-on="1"]{background:var(--on);border-color:var(--on);color:var(--on-ink)}
@@ -320,8 +335,8 @@ body.embedded .head{margin-bottom:10px}
           <button type="button" class="mini" data-z="0.005">+0.5%</button>
         </div>
         <div class="row" style="margin-top:6px">
-          <button type="button" class="chip" id="fitBtn" data-on="1">Fit</button>
-          <button type="button" class="chip" id="fillBtn" data-on="0">Fill</button>
+          <button type="button" class="chip chip-fig" id="fitBtn" data-on="1" aria-label="Fit"><svg class="g-fit" viewBox="0 0 48 42" aria-hidden="true"><rect class="fr" x="1" y="1" width="46" height="40" rx="5"/><rect class="br" x="5" y="12" width="38" height="18" rx="2"/></svg><span>Fit</span></button>
+          <button type="button" class="chip chip-fig" id="fillBtn" data-on="0" aria-label="Fill"><svg class="g-fit" viewBox="0 0 48 42" aria-hidden="true"><rect class="dim" x="5" y="-4" width="38" height="50" rx="2"/><rect class="fr" x="1" y="1" width="46" height="40" rx="5"/><rect class="br" x="5" y="5" width="38" height="32" rx="2"/></svg><span>Fill</span></button>
           <button type="button" class="mini" id="resetBtn">Reset</button>
         </div>
       </section>
@@ -973,16 +988,25 @@ function buildChips(){
   const fut=$("futRow"), fx=$("fxRow"), se=$("sessRow"), tf=$("tfRow"), lg=$("logoRow");
   fut.innerHTML=fx.innerHTML=se.innerHTML=tf.innerHTML=lg.innerHTML="";
   LOGOS.forEach(function(o){
-    lg.appendChild(chip(o.label,S.markLogo===o.id,function(){
+    /* The real mark, from the card's own drawMark, in the chip's own ink. */
+    lg.appendChild(figChip(function(g,S0,ink){
+      drawMark(g,o.id,S0/2,S0/2,S0*0.78,ink);
+    },o.label,S.markLogo===o.id,function(){
       S.markLogo=o.id; buildChips(); draw();
     }));
   });
   SYMBOLS.forEach(function(s){
-    const b=chip(s.label,S.symbol===s.id,function(){S.symbol=s.id;buildChips();draw();});
+    /* The badge exactly as the card draws it, brand colour and all — which is
+       the point: you pick the thing you are looking at rather than its name. */
+    const b=figChip(function(g,S0){
+      drawSymbolIcon(g,s.id,S0/2,S0/2,S0*0.46);
+    },s.label,S.symbol===s.id,function(){S.symbol=s.id;buildChips();draw();});
     (s.group==="Futures"?fut:fx).appendChild(b);
   });
-  SESSIONS.forEach(function(s){
-    se.appendChild(chip(s,S.session===s,function(){S.session=s;buildChips();draw();}));
+  SESSIONS.forEach(function(s,i){
+    se.appendChild(figChip(sessGlyph(i),s,S.session===s,function(){
+      S.session=s; buildChips(); draw();
+    }));
   });
   TIMEFRAMES.forEach(function(t){
     tf.appendChild(chip(t,S.timeframe===t,function(){
@@ -1054,10 +1078,48 @@ const RAIL_MODES=[
   {id:"fitted",label:"Fitted",     bar:[13.71, 36.58]}
 ];
 function railGlyph(bar){
-  return '<svg viewBox="0 0 64 36" aria-hidden="true">'
+  return '<svg class="g-rail" viewBox="0 0 64 36" aria-hidden="true">'
        + '<rect class="fr" x="1" y="1" width="62" height="34" rx="5"/>'
        + '<rect class="br" x="'+bar[0]+'" y="25.5" width="'+bar[1]+'" height="5" rx="2.5"/>'
        + '</svg>';
+}
+
+/* One chip, one glyph, one label. `art` is either an SVG string or a function
+   handed a 2D context to paint — the two cases exist because some of these
+   marks are already drawn by the card's own code and there is no sense owning
+   a second copy of an Instagram outline in path data. */
+function figChip(art,label,on,fn){
+  const b=chip("",on,fn);
+  b.className="chip chip-fig";
+  b.setAttribute("aria-label",label);
+  if(typeof art==="string"){
+    b.innerHTML=art+"<span>"+label+"</span>";
+  }else{
+    const cv=document.createElement("canvas");
+    const dpr=Math.min(3,window.devicePixelRatio||1), S0=21;
+    cv.width=Math.round(S0*dpr); cv.height=Math.round(S0*dpr);
+    b.appendChild(cv);
+    const sp=document.createElement("span"); sp.textContent=label; b.appendChild(sp);
+    /* Painted after it is in the DOM, because a canvas glyph that follows the
+       chip's ink has to be able to ask what that ink currently is. */
+    requestAnimationFrame(function(){
+      const g=cv.getContext("2d");
+      g.setTransform(dpr,0,0,dpr,0,0);
+      art(g,S0,getComputedStyle(b).color);
+    });
+  }
+  return b;
+}
+
+/* Where the session sits on the card: three tabs, and the one you are picking
+   is the filled one in the middle position it will occupy — the active tab is
+   always centred, so the glyph shows the neighbours moving, not the pill. */
+function sessGlyph(i){
+  var x=[1,10.5,20], out="";
+  for(var k=0;k<3;k++)
+    out+='<rect class="'+(k===i?"br":"dim")+'" x="'+x[k]+'" y="'+(k===i?2:4)+'" '
+       + 'width="'+(k===i?8:6)+'" height="'+(k===i?10:6)+'" rx="'+(k===i?2:1.5)+'"/>';
+  return '<svg class="g-sess" viewBox="0 0 28 14" aria-hidden="true">'+out+'</svg>';
 }
 function buildRail(){
   const row=$("railRow"); row.innerHTML="";
