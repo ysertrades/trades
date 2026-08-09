@@ -200,18 +200,11 @@ body.embedded .head{margin-bottom:10px}
 .result{display:none;margin-top:8px;padding:10px;border-radius:14px;background:var(--card);
   backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);border:0.4px solid var(--card-bd);
   align-items:center;gap:10px;flex-wrap:wrap}
-.result.on{display:flex;flex-direction:column;align-items:stretch}
-/* Full width, and pressable. It keeps a pale bed because it holds the card you
-   just exported and that card is light.
-
-   -webkit-touch-callout:default is not decoration. It is what keeps the
-   press-and-hold menu — the one with "Save to Photos" — available on the
-   image, and it is the only export route on iOS that asks nobody's
-   permission. Nothing in this file may set it to none. */
-.result img{width:100%;height:auto;aspect-ratio:16/9;object-fit:contain;
-  border-radius:8px;border:1px solid var(--ctrl-bd);background:#f5f5f5;
-  -webkit-touch-callout:default}
-.result .meta{font-size:12px;color:var(--ink-2);min-width:120px}
+.result.on{display:flex}
+/* The thumbnail keeps a pale bed: it holds the card you just exported, and that
+   card is light. */
+.result img{width:64px;height:36px;object-fit:cover;border-radius:5px;border:1px solid var(--ctrl-bd);background:#f5f5f5}
+.result .meta{font-size:12px;color:var(--ink-2);flex:1;min-width:120px}
 .result .meta b{display:block;color:var(--ink);font-weight:600;font-size:12.5px}
 .danger:active{background:var(--bad-bg);border-color:var(--bad-bd);color:var(--bad)}
 /* The guide used to open as a panel inside this page. It is now a sibling
@@ -254,23 +247,12 @@ body.embedded .head{margin-bottom:10px}
         <div class="drop" id="drop"><p>Tap Load screenshot<small>or drop a file here, or paste it</small></p></div>
       </div>
       <p class="err" id="err"></p>
-      <!-- THE IMAGE IS THE DELIVERY, not a receipt for one.
-
-           Inside the Whop app on a phone this document is a cross-origin frame
-           in a web view, and every programmatic route out of it is shut: a
-           download link does nothing, a blob: URL will not open in a tab, and
-           navigator.share needs a permission the host frame does not grant.
-           Press-and-hold on an <img> is the one route that needs no permission
-           from anybody, so the export is now SHOWN at a size you can actually
-           press, and the buttons are the alternatives rather than the plan. -->
       <div class="result" id="result">
-        <img id="resultThumb" alt="The card you just exported. Press and hold it to save.">
-        <div class="meta"><b id="resultName">Ready</b><span id="resultNote"></span></div>
-        <div class="row">
-          <button type="button" class="mini" id="dlBtn">Save file</button>
-          <button type="button" class="mini" id="shareBtn" style="display:none">Share</button>
-          <button type="button" class="mini" id="tabBtn">Open in tab</button>
-        </div>
+        <img id="resultThumb" alt="">
+        <div class="meta"><b id="resultName">Ready</b><span id="resultNote">Saved to your downloads.</span></div>
+        <button type="button" class="mini" id="dlBtn">Download</button>
+        <button type="button" class="mini" id="shareBtn" style="display:none">Share</button>
+        <button type="button" class="mini" id="tabBtn">Open in tab</button>
       </div>
       <p class="tip">Drag to move · pinch or scroll to zoom · arrow keys nudge 1 px</p>
     </div>
@@ -1034,20 +1016,6 @@ function makeSlider(el,opts){
   return el;
 }
 
-/* How much canvas we are willing to ask a device for, in pixels.
-
-   A coarse pointer means a phone or a tablet, and a phone's ceiling is far
-   lower than a laptop's — low enough that the difference is between an export
-   and a dead tab. 32M pixels is 128MB of backing store; 128M is 512MB, which
-   only a desktop should be offered.
-
-   This is deliberately a BUDGET rather than an attempt to guess each device's
-   real limit. The limit is discovered by trying, and attempt() below verifies
-   what it got; the budget only keeps us from making an attempt so large that
-   there is nothing left to do the verifying. */
-const TOUCH=matchMedia("(pointer:coarse)").matches;
-const AREA_CAP=TOUCH ? 33554432 : 134217728;
-
 /* NO 8K. It was never really an export on a phone — it was a crash.
    7680x4320 is 33 million pixels and the supersampled pass asks for 132
    million, which is roughly half a gigabyte of backing store. iOS does not
@@ -1356,32 +1324,12 @@ function deliver(blobOrUrl,name){
   const res=$("result");
   res.classList.add("on");
   $("resultName").textContent=name;
+  if(lastUrl) $("resultThumb").src=lastUrl;
 
-  /* A data: URL rather than the blob: one, for the image ONLY. A web view will
-     show a blob: image and then refuse to save it from the press-and-hold
-     menu, because the menu's save goes and re-fetches the URL and blob: from a
-     framed document is not always fetchable. A data: URL carries the bytes
-     with it and there is nothing left to refuse. Both are kept: the blob is
-     still what Share and the download link want. */
-  const img=$("resultThumb");
-  if(lastUrl) img.src=lastUrl;
-  if(lastBlob){
-    const fr=new FileReader();
-    fr.onload=function(){ img.src=fr.result; };
-    fr.onerror=function(){};
-    fr.readAsDataURL(lastBlob);
-  }
-
-  /* NO CLAIM ABOUT THE DOWNLOAD, because there is no way to make one. A click
-     on a download link raises no error when the host frame drops it on the
-     floor, which is exactly what happens in the Whop app — so the old note
-     said "Saved to your downloads" on the one platform where nothing had been
-     saved. It fires anyway, because on a desktop it is the best route; it just
-     no longer reports on itself. */
-  triggerDownload();
-  $("resultNote").textContent = TOUCH
-    ? "Press and hold the image to save it to Photos. Save file and Share are worth a try too."
-    : "A download was started. If nothing arrived, right-click the image to save it, or use Open in tab.";
+  const ok=triggerDownload();
+  $("resultNote").textContent = ok
+    ? "Saved to your downloads. If nothing appeared, use Share or Open in tab."
+    : "Use Download, Share, or Open in tab to save it.";
 
   const f=shareFile();
   $("shareBtn").style.display = f ? "inline-flex" : "none";
@@ -1405,34 +1353,16 @@ function triggerDownload(){
   }catch(e){ return false; }
 }
 
-const HOLD="Press and hold the image above to save it to Photos.";
-
-$("dlBtn").onclick=function(){
-  if(!triggerDownload()) $("resultNote").textContent=TOUCH?HOLD:"Couldn't start the download. Right-click the image to save it.";
-};
+$("dlBtn").onclick=function(){ triggerDownload(); };
 $("tabBtn").onclick=function(){
   if(!lastUrl) return;
   const w=window.open(lastUrl,"_blank","noopener");
-  if(!w) $("resultNote").textContent="The app blocked the new tab. "+(TOUCH?HOLD:"Allow pop-ups, or use Share.");
+  if(!w) $("resultNote").textContent="Your browser blocked the new tab. Allow pop-ups, or use Share.";
 };
-/* THE FAILURE WAS SWALLOWED, AND IT IS THE COMMON ONE.
-
-   navigator.share is gated by Permissions Policy, so inside a frame the host
-   did not grant web-share to, it rejects — which the old `.catch(function(){})`
-   turned into a button that did nothing at all and said nothing about it. That
-   is the single worst state a button can be in.
-
-   Cancelling the share sheet rejects too, with AbortError, and that one really
-   is nothing to report. So the two are told apart: a cancel is silent, and a
-   refusal names itself and points at the route that always works. */
 $("shareBtn").onclick=function(){
   const f=shareFile();
-  if(!f){ $("resultNote").textContent=TOUCH?HOLD:"Sharing isn't available here."; return; }
-  navigator.share({files:[f],title:lastName}).then(null,function(err){
-    if(err&&err.name==="AbortError") return;
-    $("resultNote").textContent="Sharing is blocked inside this app. "
-      +(TOUCH?HOLD:"Use Save file or Open in tab instead.");
-  });
+  if(!f) return;
+  navigator.share({files:[f],title:lastName}).catch(function(){});
 };
 
 $("exportBtn").onclick=function(){
@@ -1475,32 +1405,11 @@ $("exportBtn").onclick=function(){
   function attempt(k){
     let big=null,out=null;
     try{
-      const bw=Math.round(W*k), bh=Math.round(H*k);
-      /* DO NOT ASK FOR WHAT WILL KILL THE TAB. The ladder's job is to step
-         down, but it only gets to step if the process survives the attempt,
-         and a phone asked for 300MB of canvas does not always survive long
-         enough to say no. The cap is the budget, not a guess at the limit:
-         32M pixels is 128MB and any phone of the last few years holds it. */
-      if(bw*bh>AREA_CAP) return null;
-
       big=document.createElement("canvas");
-      big.width=bw; big.height=bh;
+      big.width=Math.round(W*k); big.height=Math.round(H*k);
       const g2=big.getContext("2d");
       if(!g2) throw new Error("no context");
-      /* Safari clamps rather than throws: ask for more than it will give and
-         you get a canvas whose width quietly is not what you set. */
-      if(big.width!==bw||big.height!==bh) throw new Error("canvas clamped");
       drawTo(g2,k,true);
-      /* AND WHEN IT DOES NOT CLAMP, IT BLANKS. An oversized canvas can come
-         back the right size and completely empty, which used to sail through
-         as a successful export and hand you a transparent PNG. The card's
-         ground is opaque and covers every pixel, so a transparent sample in
-         the middle means the draw never landed. A tainted canvas cannot be
-         read at all — that is not a failure, so it is trusted. */
-      try{
-        if(g2.getImageData((bw/2)|0,(bh/2)|0,1,1).data[3]===0)
-          throw new Error("blank canvas");
-      }catch(err){ if(!err||err.name!=="SecurityError") throw err; }
 
       if(Math.round(W*k)!==outW){
         /* supersampled: resolve down to the requested size */
