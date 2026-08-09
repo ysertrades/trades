@@ -454,17 +454,6 @@
                 of the card instead of competing with it.</figcaption>
             </figure>
 
-            <!-- The one rule about the corner badge that is easy to get wrong, so
-                 it is drawn rather than described: the box is square because the
-                 symbol opposite it is, and almost no logo is. -->
-            <figure class="markfig" style="margin-top:22px">
-              <canvas id="badgefit" width="880" height="300" aria-label="A wide logo in the corner badge's square slot, shown twice: fitted so all of it is visible, and cropped to fill so its ends are cut off"></canvas>
-              <figcaption>The slot is square. Your mark almost certainly is not, so it is
-                <b>fitted</b> inside — scaled until the whole of it fits, centred, with a
-                little air off the rounded corners. Filling the square instead would crop a
-                wide mark down to its middle, which is how most avatars behave and is
-                exactly what a logo cannot afford.</figcaption>
-            </figure>
           </div>
         </div>
       </article>
@@ -1999,61 +1988,6 @@ function paintMarks(){
   c.fillText("INSTAGRAM — OUTLINED",642,272);
 }
 
-/* CONTAIN vs COVER, on the corner badge's square slot.
-
-   The stand-in mark is deliberately wide — 3:1 — because that is where the two
-   behaviours separate. Fitted, the whole of it survives at a smaller size;
-   filled, it is scaled until the square is covered and both ends leave the
-   frame. The editor does the first. This draws both so the difference is a
-   picture rather than a promise. */
-function paintBadgeFit(){
-  var cv=document.getElementById("badgefit"); if(!cv) return;
-  var c=cv.getContext("2d"), W=880, H=300;
-  c.setTransform(1,0,0,1,0,0);
-  c.clearRect(0,0,W,H);
-  var d=dark();
-  c.fillStyle=d?"rgba(255,255,255,0.03)":"#f5f5f5";
-  c.fillRect(0,0,W,H);
-
-  var ink=d?"#e9edf4":"#1c1c1c";
-  var dim=d?"rgba(233,237,244,0.62)":"rgba(27,26,22,0.6)";
-  var MW=300, MH=100;                   // the stand-in mark, 3:1
-
-  /* the mark itself, drawn into a box of any size */
-  function mark(x,y,w,h){
-    c.save();
-    c.translate(x,y); c.scale(w/MW,h/MH);
-    c.fillStyle="#e0245e";
-    rr(c,0,0,MW,MH,MH/2); c.fill();
-    c.fillStyle="#ffffff";
-    for(var i=0;i<3;i++){ c.beginPath(); c.arc(96+i*54,MH/2,17,0,Math.PI*2); c.fill(); }
-    c.restore();
-  }
-
-  function slot(cx,fitted,label){
-    var S=142, x=cx-S/2, y=52, inset=S*0.14;
-    c.save();
-    rr(c,x,y,S,S,S*0.26);
-    c.strokeStyle=d?"rgba(233,237,244,0.22)":"rgba(27,26,22,0.2)";
-    c.lineWidth=1.5; c.stroke();
-    c.clip();                            // the slot clips, exactly as the card does
-    var avail=S-inset*2;
-    /* contain takes the SMALLER ratio so the whole mark lands inside;
-       cover takes the LARGER so nothing of the square is left uncovered. */
-    var sc=fitted ? Math.min(avail/MW,avail/MH) : Math.max(S/MW,S/MH);
-    var w=MW*sc, h=MH*sc;
-    mark(x+(S-w)/2, y+(S-h)/2, w, h);
-    c.restore();
-
-    c.fillStyle=dim;
-    c.font="600 12px "+MONO; c.textAlign="center"; c.textBaseline="alphabetic";
-    c.fillText(label,cx,y+S+34);
-  }
-
-  slot(238,true, "FITTED — WHAT IT DOES");
-  slot(642,false,"FILLED — WHAT IT DOES NOT");
-}
-
 /* The rail-width pair: the same card twice, drawn by the same function the
    hero uses, differing only in the switch. 0.6 rather than 0.55 because the
    point is the bar's width, not how small the type can get. */
@@ -2260,7 +2194,6 @@ function repaintAll(){
   paintTrim();
   paintTabs();
   paintMarks();
-  paintBadgeFit();
   paintRail();
 }
 /* Two exits, one shown. Framed, the host owns navigation and a link would only
