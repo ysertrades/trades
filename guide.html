@@ -48,7 +48,7 @@
               <h1>Trades&nbsp;card editor</h1>
               <p class="lead">One HTML file that turns a raw chart screenshot into a clean
                 1920&nbsp;×&nbsp;1080 trade card — session tabs, symbol badge, timeframe pill
-                and wordmark — and exports it at up to 7680&nbsp;×&nbsp;4320.</p>
+                and wordmark — and exports it at up to 5760&nbsp;×&nbsp;3240.</p>
             </header>
 
             <div class="facts">
@@ -98,7 +98,7 @@
               <span class="note-lab">Good to know</span>
               <p>The <em>composition</em> is always 1920 × 1080 — a fixed 16:9 frame. Export
                 quality changes how many pixels that composition is rasterised into, never
-                how it is laid out. A card framed at 1080p and a card framed at 8K are the
+                how it is laid out. A card framed at 1080p and a card framed at 6K are the
                 same card.</p>
             </div>
 
@@ -344,7 +344,7 @@
           <div class="col">
             <h3 class="h3">Symbol</h3>
             <p>Seven instruments. Every badge is drawn on the canvas rather than loaded as
-              an image — which is why they stay sharp at 8K, and why the index futures carry
+              an image — which is why they stay sharp at 6K, and why the index futures carry
               the index size instead of the ticker. Starts on <span class="k">NQ</span>.</p>
 
             <div class="badges" id="badges"></div>
@@ -389,7 +389,7 @@
               <div class="row">
                 <span class="lab">Logo</span>
                 <p><span class="k">X</span> or <span class="k">Instagram</span>, both drawn
-                  as vectors at export time, so neither softens at 8K.</p>
+                  as vectors at export time, so neither softens at 6K.</p>
               </div>
               <div class="row">
                 <span class="lab">Username</span>
@@ -417,7 +417,7 @@
               <span class="note-lab">The badge is kept at full size</span>
               <p>The uploaded image is held at its original resolution and redrawn from that
                 at every export, the same way your screenshot is. Upload it large — a 512px
-                mark carries an 8K card, a 64px favicon will not.</p>
+                mark carries a 6K card, a 64px favicon will not.</p>
             </div>
           </div>
 
@@ -444,19 +444,18 @@
         <header class="head">
           <div class="eyebrow"><span class="num">04</span><span class="kicker">Workflow</span><span class="rule"></span></div>
           <h2>Nothing is <em>upscaled</em></h2>
-          <p class="sub">Lossless PNG. Four sizes. Every one redrawn at its own resolution, never stretched.</p>
+          <p class="sub">Lossless PNG. Three sizes. Every one redrawn at its own resolution, never stretched.</p>
         </header>
 
         <div class="sizes">
           <div class="size"><b>1080p</b><span>1920 × 1080</span><small>Drawn at 3840, resolved down</small></div>
           <div class="size on"><b>4K</b><span>3840 × 2160</span><small>Drawn at 7680 · default</small></div>
           <div class="size"><b>6K</b><span>5760 × 3240</span><small>Drawn at 11520</small></div>
-          <div class="size"><b>8K</b><span>7680 × 4320</span><small>Drawn at 15360</small></div>
         </div>
 
         <div class="two">
           <div class="col">
-            <h3 class="h3">What actually happens at 8K</h3>
+            <h3 class="h3">What actually happens at 6K</h3>
             <p>Every label, badge and panel is drawn again at the output size rather than
               stretched from the preview, and the image pixels come from your original
               screenshot, not the editing copy.</p>
@@ -472,7 +471,7 @@
             <div class="note warn">
               <span class="note-lab">Your screenshot is the ceiling</span>
               <p>That cleans up the overlay, not the chart. A 1080p screenshot exported at
-                8K gives crisp badges over a chart with no more detail than it started
+                6K gives crisp badges over a chart with no more detail than it started
                 with. Grab the source large and the big sizes pay off.</p>
             </div>
             <div class="note">
@@ -485,16 +484,27 @@
 
           <div class="col">
             <h3 class="h3">Getting the file out</h3>
-            <p>A download fires automatically, then a bar appears with a thumbnail and
-              three routes. This is deliberate: inside an embedded frame a plain download
-              can be blocked by the host's sandbox, and at least one of these always works.</p>
+            <p>A download fires automatically, and then the finished card appears below it
+              at full width. <b>That image is the delivery, not a receipt for one.</b></p>
+            <p>On a phone, inside an app that frames this page, every programmatic route
+              out is shut: the download link is dropped without raising anything, a
+              <code>blob:</code> URL will not open in a tab, and the share sheet needs a
+              permission the host frame does not grant. Press and hold the image and choose
+              <b>Save to Photos</b> — that route needs nobody's permission, which is why the
+              card is now shown big enough to press instead of as a 64px thumbnail.</p>
             <div class="spec tight">
-              <div class="row"><span class="lab">Download</span><p>Fires the download again, by hand.</p></div>
-              <div class="row"><span class="lab">Share</span><p>The native share sheet. Appears only where the device supports sharing files — mostly phones.</p></div>
-              <div class="row"><span class="lab">Open in tab</span><p>Opens the PNG on its own so you can save it manually. The universal fallback.</p></div>
+              <div class="row"><span class="lab">Press and hold</span><p>The image itself. The one route that works inside a framed app on a phone.</p></div>
+              <div class="row"><span class="lab">Save file</span><p>Fires the download again, by hand. The best route on a desktop.</p></div>
+              <div class="row"><span class="lab">Share</span><p>The native share sheet. If the host app blocks it, the button now says so rather than doing nothing.</p></div>
+              <div class="row"><span class="lab">Open in tab</span><p>Opens the PNG on its own so you can save it manually. Works on a desktop; a framed app usually refuses it.</p></div>
             </div>
-            <p class="fine">If a device cannot allocate a canvas that large, the export
-              steps down and tells you to pick a smaller size rather than failing silently.</p>
+            <p class="fine">A device that cannot hold a canvas that large does not always
+              say so — Safari hands back one that is silently blank, which used to sail
+              through as a successful export and give you a transparent PNG. Every attempt
+              is now checked after it is drawn, and a failed one steps down the ladder
+              instead of being trusted. 8K is gone for the same reason: its supersampled
+              pass asked for 132 million pixels and killed the tab before anything could
+              catch it.</p>
           </div>
         </div>
       </article>
