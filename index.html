@@ -129,6 +129,17 @@ canvas{display:block;width:100%;height:auto;touch-action:none}
 .chip{height:34px;padding:0 12px;border-radius:9px;border:1px solid var(--ctrl-bd);background:var(--ctrl);color:var(--ctrl-ink);
   font:500 12.5px/1 Poppins,sans-serif;cursor:pointer;white-space:nowrap}
 .chip:active{background:var(--ctrl-hit)}
+/* A CHIP THAT SHOWS ITS OWN ANSWER. The rail-width switch was a pair of words
+   with a paragraph underneath explaining what the words meant — which is the
+   long way round for a choice whose entire content is a SHAPE. Each chip
+   carries a 16:9 card with the bar drawn in it at that setting, so the picking
+   and the explaining are the same gesture and the paragraph is down to a line.
+   The glyph is drawn in currentColor, so it inverts with the chip when it is
+   the one selected and needs no second rule. */
+.chip-fig{display:inline-flex;align-items:center;gap:9px;padding-left:9px;height:38px}
+.chip-fig svg{display:block;width:36px;height:21px;flex:none;overflow:visible}
+.chip-fig .fr{fill:none;stroke:currentColor;opacity:.34;stroke-width:1.4}
+.chip-fig .br{fill:currentColor;opacity:.92}
 /* Selected is LIGHT on dark — the exact inverse of the light theme's black
    pill, and the same #E9EDF4 the guide uses for the chip it is showing you. */
 .chip[data-on="1"]{background:var(--on);border-color:var(--on);color:var(--on-ink)}
@@ -339,7 +350,7 @@ body.embedded .head{margin-bottom:10px}
         <div class="slider" id="uiSlider"><div class="track"></div><div class="fill"></div><div class="thumb"></div></div>
         <div class="sech" style="margin-top:12px"><h3 class="lab">Rail width</h3><span class="hint" id="railHint">Full</span></div>
         <div class="row" id="railRow"></div>
-        <p class="note">Two ways for the bottom bar to answer the size slider. <b>Full</b> keeps it pinned to the card, 16px off each edge, however small the furniture inside gets. <b>Fitted</b> lets it draw in with everything else. At 100% they are the same bar.</p>
+        <p class="note">The chips draw it: the bar stays pinned to the card, or comes in with everything else. At 100% they are the same bar.</p>
         <div class="sech" style="margin-top:12px"><h3 class="lab">Overlay tone</h3><span class="hint" id="tintHint">50%</span></div>
         <div class="slider" id="tintSlider"><div class="track"></div><div class="fill"></div><div class="thumb"></div></div>
         <p class="note">Centre blends the panels into the background. Right lifts them toward white, left sinks them into a soft grey so they stay visible.</p>
@@ -1027,17 +1038,38 @@ const EXPORT_SIZES=[
   {mul:2,label:"4K"},
   {mul:3,label:"6K"}
 ];
+/* THE WIDTHS ARE NOT STYLISED — they are the card's, to scale, because width
+   is the only thing this switch changes. The frame spans x=1 to x=63, so 62
+   units stand for 1920px and one unit is 30.97px. The full rail is 1888px at
+   x=16, which is 60.97 units at x=1.52. Fitted is the same bar at 60% — the
+   middle of the slider's travel, and the width the switch actually buys you —
+   centred, so 36.58 units at x=13.71. Change the geometry in drawTo and these
+   two numbers change with it.
+
+   The bar's THICKNESS is not to scale, and cannot be: 94px of 1080 comes out
+   at 3 units in a 36-unit glyph, which at 21 CSS pixels tall is a hairline.
+   It is drawn heavy enough to read. Nothing about the choice depends on it. */
 const RAIL_MODES=[
-  {id:"full",  label:"Full width"},
-  {id:"fitted",label:"Fitted"}
+  {id:"full",  label:"Full width", bar:[1.52, 60.97]},
+  {id:"fitted",label:"Fitted",     bar:[13.71, 36.58]}
 ];
+function railGlyph(bar){
+  return '<svg viewBox="0 0 64 36" aria-hidden="true">'
+       + '<rect class="fr" x="1" y="1" width="62" height="34" rx="5"/>'
+       + '<rect class="br" x="'+bar[0]+'" y="25.5" width="'+bar[1]+'" height="5" rx="2.5"/>'
+       + '</svg>';
+}
 function buildRail(){
   const row=$("railRow"); row.innerHTML="";
   RAIL_MODES.forEach(function(o){
     const on=(o.id==="full")===S.railFull;
-    row.appendChild(chip(o.label,on,function(){
+    const b=chip("",on,function(){
       S.railFull=(o.id==="full"); buildRail(); refreshHints(); draw();
-    }));
+    });
+    b.className="chip chip-fig";
+    b.innerHTML=railGlyph(o.bar)+"<span>"+o.label+"</span>";
+    b.setAttribute("aria-label",o.label+" rail");
+    row.appendChild(b);
   });
 }
 function buildExport(){

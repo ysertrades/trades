@@ -327,6 +327,27 @@
             </div>
           </div>
         </div>
+
+        <!-- Two real cards, not two diagrams. Both are drawn by drawCard — the
+             same function the hero uses — at the same 60% overlay, so the only
+             difference on screen is the one the switch makes. -->
+        <figure class="railfig">
+          <div class="railpair">
+            <div class="railone">
+              <canvas id="railFull" width="960" height="540" aria-label="A trade card at 60% overlay with the rail set to full width: the bottom bar runs the whole card, 16px off each edge, with small furniture inside it"></canvas>
+              <span class="raillab"><b>Full</b> — pinned to the card</span>
+            </div>
+            <div class="railone">
+              <canvas id="railFit" width="960" height="540" aria-label="The same card at the same 60% overlay with the rail set to fitted: the bottom bar is narrower and centred, covering 60% of the width the full one covers"></canvas>
+              <span class="raillab"><b>Fitted</b> — drawn in with the rest</span>
+            </div>
+          </div>
+          <figcaption>Same card, same 60% overlay, same everything else. <b>Full</b> keeps a
+            plinth running the whole width — a quiet chart carries it, and the small
+            furniture inside reads as deliberate. <b>Fitted</b> takes the bar down with the
+            rest of the overlay, so a busy chart gets its edges back instead of wearing a
+            thinner version of the same stripe.</figcaption>
+        </figure>
       </article>
     </div>
   </section>
@@ -1165,6 +1186,23 @@ kbd{
 }
 .trimfig figcaption, .markfig figcaption{font-size:12.6px; color:var(--ink-3); line-height:1.5;}
 
+/* The rail-width pair. Two cards side by side on a wide screen, stacked on a
+   narrow one — a comparison you have to scroll between is not a comparison. */
+.railfig{margin:26px 0 0; display:flex; flex-direction:column; gap:12px;}
+.railpair{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+.railone{display:flex; flex-direction:column; gap:8px; min-width:0;}
+.railone canvas{
+  display:block; width:100%; height:auto; border-radius:12px;
+  border:1px solid var(--hair-2); background:var(--glass-2);
+}
+.raillab{
+  font-family:var(--mono); font-size:11px; letter-spacing:.09em;
+  text-transform:uppercase; color:var(--ink-3);
+}
+.raillab b{color:var(--ink-2); font-weight:700;}
+.railfig figcaption{font-size:12.6px; color:var(--ink-3); line-height:1.5;}
+@media (max-width:760px){ .railpair{grid-template-columns:1fr;} }
+
 .badges{display:flex; flex-wrap:wrap; gap:10px;}
 .badge{
   display:flex; align-items:center; gap:9px;
@@ -1672,6 +1710,14 @@ function drawCard(c,W,H,opt){
   var P=buildPalette(opt.bg||"#f5f5f5");
   var symbol=opt.symbol||"NQ";
   var tf=opt.tf||"H4";
+  /* The editor's own rule, ported so this drawing cannot drift from it:
+     furniture takes the full scale, type takes 60% of its travel, and every
+     box takes whichever is larger — its own size or what its label needs. */
+  var ut=0.4+0.6*u;
+  var fit=function(scaled,fromType){ return Math.max(scaled,fromType); };
+  /* Full pins the rail to the card; fitted lets it draw in with everything
+     else. Default full, exactly as the editor defaults. */
+  var railFull=opt.railFull!==false;
 
   c.setTransform(1,0,0,1,0,0);
   c.clearRect(0,0,W,H);
@@ -1690,9 +1736,12 @@ function drawCard(c,W,H,opt){
   }
 
   /* session tabs — active pinned to centre */
-  var tabFont="600 "+Math.round(29*u)+"px "+SANS;
+  var tabPx=Math.round(24*ut);
+  var tabFont="600 "+tabPx+"px "+SANS;
   c.font=tabFont;
-  var tabH=58*u, tabY=40*u, padX=26*u, gap=22*u;
+  var tabH=fit(36*u,tabPx*1.5), tabY=46*u,
+      padX=fit(17*u,tabPx*0.708), gap=fit(19*u,tabPx*0.792),
+      tabR=tabH*0.278;
   var ai=Math.max(0,SESSIONS.indexOf(session));
   var ordered=[SESSIONS[(ai+2)%3],SESSIONS[ai],SESSIONS[(ai+1)%3]];
   var tabs=ordered.map(function(label){
@@ -1707,8 +1756,8 @@ function drawCard(c,W,H,opt){
     var active=(i===1), cx2=t.x+t.w/2;
     if(active){
       c.save();
-      c.shadowColor=P.tabShadow; c.shadowBlur=16; c.shadowOffsetY=4;
-      rr(c,t.x,tabY,t.w,tabH,tabH/2); c.fillStyle=P.tabBg; c.fill();
+      c.shadowColor=P.tabShadow; c.shadowBlur=12; c.shadowOffsetY=3;
+      rr(c,t.x,tabY,t.w,tabH,tabR); c.fillStyle=P.tabBg; c.fill();
       c.restore();
     }
     c.font=tabFont; c.textAlign="center"; c.textBaseline="middle";
@@ -1732,18 +1781,21 @@ function drawCard(c,W,H,opt){
   });
 
   /* bottom rail */
-  var iconR=32*u, railPad=15*u;
+  var symPx=Math.round(28*ut);
+  var iconR=fit(32*u,symPx*1.143), railPad=iconR*0.469;
   var barH=iconR*2+railPad*2;
-  var barY=H-16-barH, barX=16;
-  glass(c,barX,barY,W-32,barH,barH/2,{fill:glassFill(P,tint,1),stroke:P.strokeSoft});
+  var barW=railFull?(W-32):Math.min(W-16,(W-32)*u);
+  var barX=(W-barW)/2;
+  var barY=H-(railFull?16:16*u)-barH;
+  glass(c,barX,barY,barW,barH,barH/2,{fill:glassFill(P,tint,1),stroke:P.strokeSoft});
 
   var cy=barY+barH/2;
   var iconCX=barX+railPad+iconR;
   var sym=SYMBOLS.filter(function(s){return s.id===symbol;})[0]||SYMBOLS[0];
-  var symFont="600 "+Math.round(28*u)+"px "+SANS;
+  var symFont="600 "+symPx+"px "+SANS;
   c.font=symFont;
   var tw=c.measureText(sym.label).width;
-  var capH=58*u, capX=iconCX+iconR*0.42, textX=iconCX+iconR+26*u;
+  var capH=fit(58*u,symPx*2.071), capX=iconCX+iconR*0.42, textX=iconCX+iconR+26*u;
   glass(c,capX,cy-capH/2,textX-capX+tw+30*u,capH,capH/2,
         {fill:glassFill(P,tint,1.25),stroke:P.stroke,shadow:false});
   c.font=symFont; c.fillStyle=P.ink;
@@ -1754,11 +1806,12 @@ function drawCard(c,W,H,opt){
   /* wordmark */
   if(opt.mark!==false){
     var handle=opt.handle===undefined?"YSERTRADES":opt.handle;
-    var markSize=27*u, markText=handle?("/ "+handle):"";
+    var markPx=Math.round(26*ut);
+    var markSize=fit(27*u,markPx*1.038), markText=handle?("/ "+handle):"";
     c.save();
-    if("letterSpacing" in c) c.letterSpacing=(1.2*u)+"px";
-    c.font="400 "+Math.round(26*u)+"px "+SANS;
-    var mtw=markText?c.measureText(markText).width:0, mgap=markText?14*u:0;
+    if("letterSpacing" in c) c.letterSpacing=(1.2*ut)+"px";
+    c.font="400 "+markPx+"px "+SANS;
+    var mtw=markText?c.measureText(markText).width:0, mgap=markText?fit(14*u,markPx*0.538):0;
     var gx=W/2-(markSize+mgap+mtw)/2;
     drawMark(c,opt.logo||"x",gx+markSize/2,cy,markSize,P.ink);
     if(markText){
@@ -1770,11 +1823,14 @@ function drawCard(c,W,H,opt){
   }
 
   /* timeframe pill */
-  var tfFont="700 "+Math.round(30*u)+"px "+SANS;
+  var tfPx=Math.round(30*ut);
+  var tfFont="700 "+tfPx+"px "+SANS;
   c.font=tfFont;
   var tfw=c.measureText(tf).width;
-  var tfH=62*u, tfW=Math.max(104*u,tfw+56*u), tfY=barY-20*u-tfH;
-  glass(c,(W-tfW)/2,tfY,tfW,tfH,22*u,{fill:glassFill(P,tint,1.05),stroke:P.strokeSoft});
+  var tfH=fit(62*u,tfPx*2.067);
+  var tfW=Math.max(fit(104*u,tfPx*3.467),tfw+fit(56*u,tfPx*1.867));
+  var tfY=barY-fit(20*u,tfPx*0.667)-tfH;
+  glass(c,(W-tfW)/2,tfY,tfW,tfH,tfH*0.355,{fill:glassFill(P,tint,1.05),stroke:P.strokeSoft});
   c.font=tfFont; c.fillStyle=P.inkStrong;
   c.textAlign="center"; c.textBaseline="middle";
   c.fillText(tf,W/2,tfY+tfH/2+1*u);
@@ -1998,6 +2054,19 @@ function paintBadgeFit(){
   slot(642,false,"FILLED — WHAT IT DOES NOT");
 }
 
+/* The rail-width pair: the same card twice, drawn by the same function the
+   hero uses, differing only in the switch. 0.6 rather than 0.55 because the
+   point is the bar's width, not how small the type can get. */
+function paintRail(){
+  [["railFull",true],["railFit",false]].forEach(function(pair){
+    var cv=document.getElementById(pair[0]); if(!cv) return;
+    drawCard(cv.getContext("2d"),cv.width,cv.height,{
+      u:0.6, railFull:pair[1], seed:11, inset:true,
+      symbol:"NQ", session:"New York", tf:"H4", handle:"YSERTRADES", logo:"x"
+    });
+  });
+}
+
 /* session tab strip */
 var tabsCv=document.getElementById("tabs"), tabsCtx=tabsCv.getContext("2d");
 var fadeVal=100;
@@ -2192,6 +2261,7 @@ function repaintAll(){
   paintTabs();
   paintMarks();
   paintBadgeFit();
+  paintRail();
 }
 /* Two exits, one shown. Framed, the host owns navigation and a link would only
    nest another copy of it inside this frame, so the button asks the host to
