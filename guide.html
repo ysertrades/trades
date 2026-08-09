@@ -302,15 +302,26 @@
               <div class="row">
                 <span class="lab">Two numbers</span>
                 <p>The panel reads <span class="k">55% · type 73%</span>, and it means it.
-                  The <b>footprint</b> takes the full setting: at 55% the bottom rail is 55%
-                  as wide as it is at 100% and draws in from the edges, so less of the chart
-                  is covered rather than the same strip covered more thinly. The <b>type</b>
-                  travels at 60% of that, because a label scaled to 55% on a 1080px card is
-                  four grey pixels on a phone. Boxes take whichever is larger — their own
-                  size, or what the label inside them needs — so at the bottom of the range
-                  the pill hugs its text instead of crushing it.</p>
+                  The <b>footprint</b> takes the full setting. The <b>type</b> travels at 60%
+                  of that, because a label scaled to 55% on a 1080px card is four grey pixels
+                  on a phone. Boxes take whichever is larger — their own size, or what the
+                  label inside them needs — so at the bottom of the range the pill hugs its
+                  text instead of crushing it.</p>
                 <p class="fine">At exactly 100% the two agree to the pixel, so a card built
                   before any of this looks the same as it always did.</p>
+              </div>
+              <div class="row">
+                <span class="lab">Rail width</span>
+                <p>The bottom bar answers the size slider two ways, and which one is right
+                  depends on the card rather than on the number.
+                  <span class="k">Full</span> pins it to the card — 16px off each edge,
+                  however small the furniture inside gets — so a quiet chart keeps a plinth
+                  running its whole width. <span class="k">Fitted</span> lets it draw in with
+                  everything else, at 55% covering 55% of the width it covered at 100%, so a
+                  busy chart gets the bar out of the way instead of wearing a thinner version
+                  of the same stripe.</p>
+                <p class="fine">At 100% they are the same bar to the pixel. The choice only
+                  starts to mean anything once you move off it.</p>
               </div>
             </div>
           </div>

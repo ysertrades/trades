@@ -337,6 +337,9 @@ body.embedded .head{margin-bottom:10px}
       <section class="sec">
         <div class="sech"><h3 class="lab">Overlay size</h3><span class="hint" id="uiHint">100%</span></div>
         <div class="slider" id="uiSlider"><div class="track"></div><div class="fill"></div><div class="thumb"></div></div>
+        <div class="sech" style="margin-top:12px"><h3 class="lab">Rail width</h3><span class="hint" id="railHint">Full</span></div>
+        <div class="row" id="railRow"></div>
+        <p class="note">Two ways for the bottom bar to answer the size slider. <b>Full</b> keeps it pinned to the card, 16px off each edge, however small the furniture inside gets. <b>Fitted</b> lets it draw in with everything else. At 100% they are the same bar.</p>
         <div class="sech" style="margin-top:12px"><h3 class="lab">Overlay tone</h3><span class="hint" id="tintHint">50%</span></div>
         <div class="slider" id="tintSlider"><div class="track"></div><div class="fill"></div><div class="thumb"></div></div>
         <p class="note">Centre blends the panels into the background. Right lifts them toward white, left sinks them into a soft grey so they stay visible.</p>
@@ -682,6 +685,11 @@ const S = {
   zoom:1, offX:0, offY:0,
   crop:{l:0,r:0,t:0,b:0},
   ui:1, tint:50, fade:100, showMark:true, fitMode:"fit",
+  /* The bottom rail's WIDTH, which is a separate question from the overlay's
+     size and always was — it just used to be answered for you. "full" pins it
+     to the card, 16px off each edge, whatever the scale; "fitted" lets it
+     shrink with everything else. At 100% the two are the same bar. */
+  railFull:true,
   markLogo:"x", handle:"YSERTRADES",
   /* The corner badge. The Image is kept at its original resolution and never
      pre-scaled, so an export at 8K draws it at 8K rather than blowing up an
@@ -834,17 +842,26 @@ function drawTo(g2,k,useFull){
      starved: a hairline stripe from edge to edge with a speck at each end.
      Nothing was synced to anything.
 
-     Both dimensions are on the scale now. The bar is (W-32)·u wide and
+     FITTED puts both dimensions on the scale: the bar is (W-32)·u wide and
      centred, and the gap under it is 16·u, so a 55% overlay covers 55% of the
-     width it covered at 100% — the number on the slider is the number on the
-     card. At 100% that is W-32 at x=16 with a 16px gap, exactly as before.
-     Above 100% it can still grow, but only until it is 8px off the edge; past
-     that there is no card left to take. */
+     width it covered at 100%. Above 100% it can still grow, but only until it
+     is 8px off the edge; past that there is no card left to take.
+
+     FULL keeps the frame the card gave it — x=16, W-32 wide, 16 off the
+     bottom — and lets only the furniture inside it scale. That is what the
+     rail did before it was on the scale at all, and it is a real choice
+     rather than the old bug: a wide bar under a busy chart reads as a
+     deliberate plinth, and a small overlay riding the full width is a look,
+     not a mistake. The mistake was that you could not say which you wanted.
+
+     At 100% the two are the same bar to the pixel, which is why this switch
+     can default to full without changing anything anybody already made. */
   const symPx=Math.round(28*ut);
   const iconR=fit(32*u,symPx*1.143), railPad=iconR*0.469;
   const barH=iconR*2+railPad*2;
-  const barW=Math.min(W-16,(W-32)*u), barX=(W-barW)/2;
-  const barY=H-16*u-barH;
+  const barW=S.railFull?(W-32):Math.min(W-16,(W-32)*u);
+  const barX=(W-barW)/2;
+  const barY=H-(S.railFull?16:16*u)-barH;
   glass(g2,barX,barY,barW,barH,barH/2,{fill:glassFill(1),stroke:P.strokeSoft,shadowColor:P.shadow});
 
   /* symbol badge + capsule */
@@ -1005,6 +1022,19 @@ const EXPORT_SIZES=[
   {mul:3,label:"6K"},
   {mul:4,label:"8K"}
 ];
+const RAIL_MODES=[
+  {id:"full",  label:"Full width"},
+  {id:"fitted",label:"Fitted"}
+];
+function buildRail(){
+  const row=$("railRow"); row.innerHTML="";
+  RAIL_MODES.forEach(function(o){
+    const on=(o.id==="full")===S.railFull;
+    row.appendChild(chip(o.label,on,function(){
+      S.railFull=(o.id==="full"); buildRail(); refreshHints(); draw();
+    }));
+  });
+}
 function buildExport(){
   const row=$("expRow"); row.innerHTML="";
   EXPORT_SIZES.forEach(function(o){
@@ -1088,6 +1118,12 @@ function refreshHints(){
      Saying only the first would be the same lie the old single scale told. */
   const uiPct=Math.round(S.ui*100), typePct=Math.round((0.4+0.6*S.ui)*100);
   $("uiHint").textContent=uiPct===typePct?uiPct+"%":uiPct+"% · type "+typePct+"%";
+  /* Says what the choice is WORTH, not just which chip is lit — at 100% the
+     two modes draw the same bar, and a hint that read "Full" there would imply
+     a difference the card does not have. */
+  $("railHint").textContent=S.railFull
+    ? (uiPct===100?"Full · same as fitted here":"Full")
+    : (uiPct===100?"Fitted · same as full here":"Fitted "+Math.round(Math.min(1,S.ui)*100)+"%");
   const tn=Math.round(S.tint);
   $("tintHint").textContent = tn===0 ? "flat" : (tn>0 ? "+"+tn+" lighter" : tn+" darker");
   $("fadeHint").textContent=Math.round(S.fade)+"%";
@@ -1550,6 +1586,7 @@ if(EMBEDDED){
 }
 
 buildChips();
+buildRail();
 buildExport();
 buildEdges();
 buildBackdrops();
